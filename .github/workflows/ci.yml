@@ -1,0 +1,35 @@
+# Integración continua en Linux real.
+#
+# Existe porque el entorno de despliegue (Render) es Linux y npm valida el
+# lockfile de forma más estricta que en macOS: un `npm ci` que pasa en el Mac
+# de desarrollo puede fallar en el servidor. Este workflow reproduce el build
+# de Render en cada push — si esto está en verde, el deploy no fallará por
+# dependencias.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: npm ci + build + tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # El mismo comando que ejecuta Render, en el mismo sistema operativo
+      - name: Instalar dependencias (npm ci)
+        run: npm ci
+
+      - name: Tests unitarios
+        run: npm run test
+
+      - name: Build de producción
+        run: npm run build
