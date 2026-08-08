@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
    * Empaquetarlas hace que el bundler reescriba esas cargas y el OCR falle en
    * producción aunque funcione en desarrollo.
    */
-  serverExternalPackages: ["pdfjs-dist", "tesseract.js", "@napi-rs/canvas"],
+  serverExternalPackages: ["pdfjs-dist", "tesseract.js", "@napi-rs/canvas", "exceljs"],
 
   async headers() {
     return [

@@ -480,11 +480,12 @@ declarado en la propia ruta.
 src/
   app/
     (privado)/            área con sesión: shell, sidebar y header
-      revision-tecnica/   resumen, en revisión, no enviados, rechazados,
-                          vencimientos, historial, detalle
+      revision-tecnica/   resumen con análisis de rechazos, en revisión,
+                          no enviados, rechazados, vencimientos, historial
       configuracion/      flota, terminales
       acceso/             usuarios, roles y permisos
     api/documents/analyze procesamiento del PDF de rechazo
+    api/reports/          exportación Excel del módulo de revisión técnica
     login/                acceso con RUT
   components/
     ui/                   botones, campos, tablas, modales, filtros, toasts

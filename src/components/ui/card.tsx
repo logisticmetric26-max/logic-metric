@@ -70,9 +70,10 @@ export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElemen
 /**
  * §17 · Indicador del resumen operacional.
  *
- * La cifra es el elemento dominante y va en cifras tabulares: al actualizarse
- * no baila. El color se aplica al número, no al fondo — seis tarjetas de color
- * pleno compiten entre sí y ninguna destaca.
+ * La cifra es el elemento dominante, en cifras proporcionales (las tabulares
+ * son para columnas alineadas, no para un número de exhibición). El color se
+ * aplica al número, no al fondo — seis tarjetas de color pleno compiten entre
+ * sí y ninguna destaca.
  */
 export function StatCard({
   label,
@@ -129,7 +130,7 @@ export function StatCard({
       ) : (
         <p
           className={cn(
-            "text-[2.125rem] leading-none font-semibold tracking-[-0.03em] tabular-nums",
+            "text-[2.125rem] leading-none font-semibold tracking-[-0.03em]",
             tones[tone].value,
           )}
         >
