@@ -18,6 +18,31 @@ function required(name: string, value: string | undefined): string {
 }
 
 /**
+ * Deja la URL de Supabase en su forma base: `https://<proyecto>.supabase.co`.
+ *
+ * El panel de Supabase muestra la ruta del API REST (`…/rest/v1/`) junto a la
+ * URL del proyecto, y copiar la primera es el error natural. Con esa ruta
+ * pegada, el cliente compone direcciones como `…/rest/v1/auth/v1/token`, que no
+ * existen: TODAS las llamadas fallan, empezando por el inicio de sesión.
+ *
+ * Se descarta cualquier ruta, query o fragmento y se conserva sólo el origen.
+ * Aceptar las dos formas cuesta una línea; diagnosticarlo en producción costó
+ * bastante más.
+ */
+export function normalizeSupabaseUrl(raw: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.trim());
+  } catch {
+    throw new Error(
+      `NEXT_PUBLIC_SUPABASE_URL no es una URL válida: se esperaba algo como https://xxxx.supabase.co`,
+    );
+  }
+
+  return parsed.origin;
+}
+
+/**
  * Configuración pública: puede viajar al navegador sin riesgo.
  *
  * Se lee de forma perezosa (no como constante de módulo) para que importar este
@@ -27,11 +52,13 @@ function required(name: string, value: string | undefined): string {
  */
 export function getPublicEnv() {
   return {
-    supabaseUrl: required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
+    supabaseUrl: normalizeSupabaseUrl(
+      required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
+    ),
     supabaseAnonKey: required(
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    ),
+    ).trim(),
   };
 }
 
