@@ -1,0 +1,380 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   Sistema de diseño
+   =============================================================================
+   Interfaz empresarial con lenguaje de material translúcido.
+
+   PRINCIPIO RECTOR
+   ----------------
+   El cromo es cristal; los datos son sólidos.
+
+   Sidebar, header, modales, menús y avisos flotan sobre el fondo con
+   desenfoque y saturación — dan profundidad y contexto espacial. Las tablas,
+   las fichas de detalle y los formularios se apoyan en superficies opacas:
+   sobre 25 filas de datos operacionales, la translucidez destruye la
+   legibilidad y ralentiza el scroll.
+
+   La profundidad se construye con cuatro señales combinadas, nunca con una
+   sola: elevación (sombra multicapa), separación (hairline), luz (reflejo
+   interior superior) y desenfoque del fondo.
+   ========================================================================== */
+
+@theme {
+  /* --- Superficies ------------------------------------------------------- */
+  --color-surface: #ffffff;
+  --color-surface-subtle: #fafafc;
+  --color-surface-muted: #f4f4f7;
+  --color-canvas: #f0f0f4;
+
+  /* --- Bordes ------------------------------------------------------------
+     Semitransparentes: se integran con lo que tengan detrás en vez de
+     dibujar una línea gris uniforme sobre cualquier fondo. */
+  --color-border: rgb(0 0 0 / 0.07);
+  --color-border-strong: rgb(0 0 0 / 0.14);
+
+  /* --- Texto -------------------------------------------------------------
+     Negro cálido en lugar de negro puro: menos fatiga en lecturas largas. */
+  --color-ink: #1d1d1f;
+  --color-ink-secondary: #4b4b51;
+  --color-ink-muted: #6e6e76;
+  --color-ink-subtle: #9a9aa2;
+
+  /* --- Marca -------------------------------------------------------------- */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dbe7ff;
+  --color-brand-200: #bed4ff;
+  --color-brand-500: #2b7fff;
+  --color-brand-600: #0a6cff;
+  --color-brand-700: #0055d4;
+  --color-brand-800: #0044ab;
+  --color-brand-900: #003585;
+
+  /* --- Semánticos --------------------------------------------------------- */
+  --color-success-50: #e9f9ef;
+  --color-success-200: #b3e9c6;
+  --color-success-600: #128a45;
+  --color-success-700: #0d6d36;
+
+  --color-warning-50: #fff6e5;
+  --color-warning-200: #ffdfa3;
+  --color-warning-600: #b87503;
+  --color-warning-700: #915c02;
+
+  --color-danger-50: #ffeef0;
+  --color-danger-200: #ffc7ce;
+  --color-danger-600: #d81f36;
+  --color-danger-700: #ad1729;
+
+  --color-info-50: #e8f4fb;
+  --color-info-200: #b0dcf3;
+  --color-info-600: #0774ad;
+  --color-info-700: #055a87;
+
+  /* --- Tipografía ---------------------------------------------------------
+     Encabeza la pila la fuente del sistema: en Mac e iOS es SF Pro, que da el
+     acabado nativo sin descargar ni un byte de fuente. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI Variable",
+    "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* --- Elevación ----------------------------------------------------------
+     Sombras multicapa: un halo amplio y difuso para la elevación, más un
+     contacto corto y denso que ancla el elemento al plano. */
+  --shadow-card: 0 1px 2px rgb(15 18 34 / 0.04), 0 4px 12px -2px rgb(15 18 34 / 0.05);
+  --shadow-raised: 0 2px 4px rgb(15 18 34 / 0.04), 0 12px 28px -6px rgb(15 18 34 / 0.10);
+  --shadow-overlay: 0 8px 16px -4px rgb(15 18 34 / 0.10), 0 32px 64px -12px rgb(15 18 34 / 0.24);
+
+  /* --- Curvas de animación ------------------------------------------------
+     Salida rápida y frenado largo: el gesto se siente físico, no lineal. */
+  --ease-emphasis: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =============================================================================
+   Cristal · variables de material
+   ========================================================================== */
+
+:root {
+  /* Tinte de la superficie translúcida */
+  --glass-tint: rgb(255 255 255 / 0.72);
+  --glass-tint-strong: rgb(255 255 255 / 0.86);
+
+  /* `saturate` es lo que separa el cristal real del simple desenfoque: revive
+     el color que el blur apaga, igual que la vibrancy del sistema. */
+  --glass-filter: saturate(180%) blur(20px);
+  --glass-filter-strong: saturate(190%) blur(32px);
+
+  /* Reflejo interior superior: simula la luz que recoge un canto biselado */
+  --glass-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+}
+
+/* =============================================================================
+   Base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Evita el zoom automático de iOS al enfocar un campo */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Activa las ligaduras y el kerning de SF Pro */
+  font-feature-settings: "kern", "liga", "calt";
+  /* §4 · nunca debe existir scroll horizontal global */
+  overflow-x: hidden;
+}
+
+/* -----------------------------------------------------------------------------
+   Ambiente
+   -----------------------------------------------------------------------------
+   Un fondo plano no da nada que desenfocar: el cristal se ve gris. Estos dos
+   halos de color, muy tenues y fijos, son lo que el blur recoge y convierte en
+   profundidad. Sin ellos el efecto no existe.
+   -------------------------------------------------------------------------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58rem 42rem at 8% -8%, rgb(10 108 255 / 0.10), transparent 62%),
+    radial-gradient(48rem 38rem at 102% 4%, rgb(120 92 255 / 0.08), transparent 60%),
+    radial-gradient(52rem 40rem at 62% 108%, rgb(7 116 173 / 0.07), transparent 62%);
+}
+
+/* Jerarquía tipográfica: a mayor tamaño, menor tracking */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.021em;
+}
+
+/* Las cifras no deben bailar al actualizarse */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Áreas seguras del iPhone cuando corre como PWA instalada */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Foco visible y consistente para navegación por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Scrollbars discretas en contenedores con scroll interno */
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+}
+.scroll-area::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background-color: rgb(0 0 0 / 0.16);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(0 0 0 / 0.28);
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =============================================================================
+   Materiales
+   ========================================================================== */
+
+/* Cristal estándar · sidebar, header, menús desplegables */
+.glass {
+  background-color: var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}
+
+/* Cristal denso · modales, drawers y avisos flotantes, donde debe leerse
+   contenido por encima de cualquier fondo */
+.glass-strong {
+  background-color: var(--glass-tint-strong);
+  -webkit-backdrop-filter: var(--glass-filter-strong);
+  backdrop-filter: var(--glass-filter-strong);
+  box-shadow: var(--glass-highlight);
+}
+
+/* Reserva para navegadores sin backdrop-filter (Firefox con la opción
+   desactivada): sin esto el panel quedaría casi transparente e ilegible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: rgb(255 255 255 / 0.96);
+  }
+  .glass-strong {
+    background-color: rgb(255 255 255 / 0.99);
+  }
+}
+
+/* Panel sólido · el material de los datos: tablas, fichas y formularios */
+.panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Realce interior para superficies elevadas sobre el fondo ambiental */
+.sheen {
+  box-shadow: var(--glass-highlight), var(--shadow-raised);
+}
+
+/* =============================================================================
+   Animaciones
+   ========================================================================== */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s var(--ease-standard);
+}
+.animate-slide-up {
+  animation: slide-up 0.32s var(--ease-emphasis);
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.34s var(--ease-emphasis);
+}
+.animate-pop-in {
+  animation: pop-in 0.18s var(--ease-emphasis);
+}
+
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.04) 25%,
+    rgb(0 0 0 / 0.07) 50%,
+    rgb(0 0 0 / 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s var(--ease-standard) infinite;
+}
+
+/* Quien haya pedido menos movimiento, no lo recibe */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =============================================================================
+   Accesibilidad
+   ========================================================================== */
+
+/* Con contraste alto la translucidez estorba: se sirve todo opaco */
+@media (prefers-contrast: more) {
+  .glass,
+  .glass-strong {
+    background-color: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  body::before {
+    display: none;
+  }
+  :root {
+    --color-border: rgb(0 0 0 / 0.24);
+    --color-border-strong: rgb(0 0 0 / 0.42);
+  }
+}
+
+/* =============================================================================
+   Impresión
+   ========================================================================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body::before {
+    display: none;
+  }
+  .glass,
+  .glass-strong {
+    background: #fff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
