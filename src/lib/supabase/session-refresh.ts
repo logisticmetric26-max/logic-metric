@@ -3,8 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
 import { getPublicEnv } from "@/lib/env";
 
-/** Rutas accesibles sin sesión. */
-const PUBLIC_PATHS = ["/login", "/manifest.webmanifest", "/sw.js", "/offline"];
+/**
+ * Rutas accesibles sin sesión.
+ *
+ * `/api/estado` es de diagnóstico y tiene que ser público a propósito: sirve
+ * para comprobar la configuración del servidor cuando nadie puede entrar, que
+ * es justo el momento en el que exigir sesión lo volvería inservible. Sólo
+ * devuelve booleanos, nunca el valor de una clave.
+ */
+const PUBLIC_PATHS = ["/login", "/manifest.webmanifest", "/sw.js", "/offline", "/api/estado"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
