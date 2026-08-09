@@ -5,7 +5,15 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { ErrorState } from "@/components/ui/feedback";
 import { SummaryDashboard } from "@/features/technical-reviews/summary-dashboard";
 import {
+  aggregateExpirations,
+  aggregateHistory,
+  aggregateNotSent,
+  aggregateOpenReviews,
   aggregateRejections,
+  fetchClosedEvents,
+  fetchExpirations,
+  fetchNotSent,
+  fetchOpenReviews,
   fetchRejectionRecords,
 } from "@/features/technical-reviews/analytics";
 import { formatDateOnly } from "@/lib/format";
@@ -55,21 +63,46 @@ export default async function ResumenPage({
   // construir el JSX).
   let summary: TechnicalReviewSummary;
   let analytics: ReturnType<typeof aggregateRejections>;
+  let openReviews: ReturnType<typeof aggregateOpenReviews>;
+  let notSent: ReturnType<typeof aggregateNotSent>;
+  let expirations: ReturnType<typeof aggregateExpirations>;
+  let history: ReturnType<typeof aggregateHistory>;
+
+  // El nombre del terminal ya está en el contexto: evita una consulta extra
+  // para acompañar los vencimientos, que sólo traen el id.
+  const terminalNames = new Map(context.terminals.map((terminal) => [terminal.id, terminal.name]));
+  const filters = { from, to, terminalId };
 
   try {
-    const [{ data: summaryData, error: summaryError }, records] = await Promise.all([
+    // Una consulta por subsección, todas en paralelo y todas bajo RLS.
+    const [
+      { data: summaryData, error: summaryError },
+      rejectionRecords,
+      openRecords,
+      notSentRecords,
+      expirationRecords,
+      closedRecords,
+    ] = await Promise.all([
       supabase.rpc("technical_review_summary", {
         p_from: from,
         p_to: to,
         p_terminal_id: terminalId,
       }),
-      fetchRejectionRecords(supabase, { from, to, terminalId }),
+      fetchRejectionRecords(supabase, filters),
+      fetchOpenReviews(supabase, filters),
+      fetchNotSent(supabase, filters),
+      fetchExpirations(supabase, { terminalId }, terminalNames),
+      fetchClosedEvents(supabase, filters),
     ]);
 
     if (summaryError) throw summaryError;
 
     summary = summaryData as TechnicalReviewSummary;
-    analytics = aggregateRejections(records);
+    analytics = aggregateRejections(rejectionRecords);
+    openReviews = aggregateOpenReviews(openRecords);
+    notSent = aggregateNotSent(notSentRecords);
+    expirations = aggregateExpirations(expirationRecords);
+    history = aggregateHistory(closedRecords);
   } catch (error) {
     reportError("resumenPage", error);
     return <ErrorState description="No fue posible calcular los indicadores." />;
@@ -95,6 +128,10 @@ export default async function ResumenPage({
     <SummaryDashboard
       summary={summary}
       analytics={analytics}
+      openReviews={openReviews}
+      notSent={notSent}
+      expirations={expirations}
+      history={history}
       terminals={context.terminals.map((terminal) => ({
         id: terminal.id,
         name: terminal.name,

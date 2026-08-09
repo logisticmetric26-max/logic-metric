@@ -69,32 +69,37 @@ export interface RankedBarItem {
 export function RankedBars({
   items,
   maxItems = 10,
+  remainderNoun = "motivo",
 }: {
   items: RankedBarItem[];
   maxItems?: number;
+  /** Sustantivo del pie «y N … más». En singular. */
+  remainderNoun?: string;
 }) {
   const visible = items.slice(0, maxItems);
   const max = Math.max(...visible.map((item) => item.value), 1);
   const remainder = items.length - visible.length;
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-[7px]">
       {visible.map((item, index) => (
         <div key={`${item.label}-${index}`} className="group" title={item.label}>
-          <div className="mb-1 flex items-baseline justify-between gap-3">
-            <span className="min-w-0 truncate text-[12.5px] leading-snug text-ink-secondary">
+          <div className="mb-[3px] flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-[11.5px] leading-snug text-ink-secondary">
               {item.label}
-              {item.hint && <span className="ml-1.5 text-[11px] text-ink-subtle">{item.hint}</span>}
+              {item.hint && (
+                <span className="ml-1.5 text-[10.5px] text-ink-subtle">{item.hint}</span>
+              )}
             </span>
-            <span className="shrink-0 text-[12.5px] font-medium text-ink tabular-nums">
+            <span className="shrink-0 text-[11.5px] font-medium text-ink tabular-nums">
               {formatNumber(item.value)}
             </span>
           </div>
 
           {/* Pista: un paso bajo la superficie, recesiva */}
-          <div className="h-[14px] w-full rounded-r-[4px] bg-black/[0.045]">
+          <div className="h-[8px] w-full rounded-r-[3px] bg-black/[0.045]">
             <div
-              className="h-full rounded-r-[4px] transition-[width] duration-500 ease-[var(--ease-emphasis)] group-hover:brightness-110"
+              className="h-full rounded-r-[3px] transition-[width] duration-500 ease-[var(--ease-emphasis)] group-hover:brightness-110"
               style={{
                 width: `${Math.max((item.value / max) * 100, 2)}%`,
                 backgroundColor: item.area ? CHART_COLORS[item.area] : CHART_COLORS.MANTENCION,
@@ -105,95 +110,158 @@ export function RankedBars({
       ))}
 
       {remainder > 0 && (
-        <p className="pt-0.5 text-[11px] text-ink-subtle">
-          y {formatNumber(remainder)} motivo{remainder === 1 ? "" : "s"} más — el detalle completo
-          está en la exportación a Excel.
+        <p className="pt-0.5 text-[10.5px] text-ink-subtle">
+          y {formatNumber(remainder)} {remainderNoun}
+          {remainder === 1 ? "" : "s"} más — el detalle completo está en el Excel.
         </p>
       )}
     </div>
   );
 }
 
+/** Colores de estado de vencimiento (§39). Ordenados de sano a crítico. */
+export const EXPIRATION_COLORS = {
+  VALID: "#0a6cff",
+  EXPIRING_SOON: "#eb6834",
+  EXPIRED: "#b42318",
+  NO_RECORD: "#98a2b3",
+} as const;
+
 /**
- * Barra dividida Mantención / Logística.
+ * Rampa de un solo tono para magnitudes ORDENADAS (días fuera de planta).
  *
- * Parte-de-un-todo con dos categorías: una única barra apilada con separación
- * de 2 px en color de superficie, más las cifras y porcentajes en texto — el
- * color identifica, el texto informa.
+ * Es una escala, no categorías: usar colores distintos sugeriría que «1 a 2
+ * días» y «más de 7» son cosas diferentes en especie, cuando sólo difieren en
+ * grado. Más oscuro = más tiempo fuera.
  */
-export function AreaSplitBar({
-  mantencion,
-  logistica,
-}: {
-  mantencion: number;
-  logistica: number;
-}) {
-  const total = mantencion + logistica;
+export const AGING_RAMP = ["#c3dbff", "#7db0ff", "#2f7dff", "#0a4fbf"] as const;
 
-  if (total === 0) return null;
+export interface BarSegment {
+  key: string;
+  label: string;
+  count: number;
+  color: string;
+}
 
-  const segments = (
-    [
-      { area: "MANTENCION" as const, value: mantencion },
-      { area: "LOGISTICA" as const, value: logistica },
-    ] satisfies { area: RejectionArea; value: number }[]
-  ).filter((segment) => segment.value > 0);
+/**
+ * Barra segmentada compacta con su leyenda en cifras.
+ *
+ * Parte-de-un-todo con pocas categorías. La barra da la proporción de un
+ * vistazo; la leyenda da el número exacto, porque un porcentaje sin el conteo
+ * no sirve para actuar. Los segmentos se separan con 2 px del color de la
+ * superficie, no con bordes.
+ */
+export function SegmentedBar({ segments }: { segments: BarSegment[] }) {
+  const total = segments.reduce((sum, segment) => sum + segment.count, 0);
+  const visible = segments.filter((segment) => segment.count > 0);
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* gap-[2px]: la separación la hace la superficie, no un borde */}
-      <div className="flex h-[22px] w-full gap-[2px] overflow-hidden rounded-[6px]">
-        {segments.map((segment) => {
-          const share = segment.value / total;
-          return (
-            <div
-              key={segment.area}
-              title={`${AREA_LABEL[segment.area]}: ${formatNumber(segment.value)} (${Math.round(share * 100)}%)`}
-              className="flex h-full items-center justify-center transition-[filter] hover:brightness-110"
-              style={{
-                width: `${share * 100}%`,
-                backgroundColor: CHART_COLORS[segment.area],
-              }}
-            >
-              {/* Etiqueta interior sólo si cabe con holgura */}
-              {share >= 0.14 && (
-                <span className="px-2 text-[11px] font-semibold text-white">
-                  {Math.round(share * 100)}%
-                </span>
-              )}
-            </div>
-          );
-        })}
+    <div className="flex flex-col gap-2.5">
+      <div className="flex h-[10px] w-full gap-[2px] overflow-hidden rounded-[5px] bg-black/[0.045]">
+        {visible.map((segment) => (
+          <div
+            key={segment.key}
+            title={`${segment.label}: ${formatNumber(segment.count)} de ${formatNumber(total)}`}
+            className="h-full transition-[filter] hover:brightness-110"
+            style={{
+              width: `${(segment.count / Math.max(total, 1)) * 100}%`,
+              backgroundColor: segment.color,
+            }}
+          />
+        ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {(["MANTENCION", "LOGISTICA"] as const).map((area) => {
-          const value = area === "MANTENCION" ? mantencion : logistica;
-          const share = total === 0 ? 0 : value / total;
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {segments.map((segment) => (
+          <div key={segment.key} className="flex items-baseline gap-1.5">
+            <span
+              aria-hidden
+              className="size-[7px] shrink-0 translate-y-[-1px] rounded-full"
+              style={{ backgroundColor: segment.color }}
+            />
+            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-secondary">
+              {segment.label}
+            </span>
+            <span className="shrink-0 text-[11.5px] font-medium text-ink tabular-nums">
+              {formatNumber(segment.count)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-          return (
-            <div
-              key={area}
-              className="flex items-start gap-2.5 rounded-xl border border-border bg-surface-subtle px-3.5 py-3"
-            >
-              <span
-                aria-hidden
-                className="mt-1 size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: CHART_COLORS[area] }}
+export interface MonthlyColumn {
+  label: string;
+  approved: number;
+  rejected: number;
+}
+
+/**
+ * Columnas mensuales de revisiones cerradas.
+ *
+ * Dos series agrupadas (no apiladas): la pregunta es «¿cuántas se rechazaron
+ * este mes frente al anterior?», y apilar obligaría a medir un segmento que no
+ * arranca del cero. Se rotulan sólo el máximo y los meses: una cuadrícula
+ * completa añadiría tinta sin añadir precisión a esta escala.
+ */
+export function MonthlyColumns({ months }: { months: MonthlyColumn[] }) {
+  const max = Math.max(...months.map((month) => Math.max(month.approved, month.rejected)), 1);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-end gap-1 border-b border-border pb-1" style={{ height: 92 }}>
+        {months.map((month) => (
+          <div key={month.label} className="flex min-w-0 flex-1 items-end justify-center gap-[3px]">
+            {(
+              [
+                { key: "approved", value: month.approved, color: CHART_COLORS.MANTENCION },
+                { key: "rejected", value: month.rejected, color: CHART_COLORS.LOGISTICA },
+              ] as const
+            ).map((series) => (
+              <div
+                key={series.key}
+                title={`${month.label} · ${series.key === "approved" ? "Aprobadas" : "Rechazadas"}: ${formatNumber(series.value)}`}
+                className="w-[9px] rounded-t-[3px] transition-[height] duration-500 ease-[var(--ease-emphasis)] hover:brightness-110"
+                style={{
+                  height: series.value === 0 ? 2 : `${Math.max((series.value / max) * 100, 3)}%`,
+                  backgroundColor: series.value === 0 ? "rgba(0,0,0,0.07)" : series.color,
+                }}
               />
-              <div className="min-w-0">
-                <p className="text-[12px] font-medium text-ink-secondary">{AREA_LABEL[area]}</p>
-                <p className="mt-0.5 text-[22px] leading-none font-semibold tracking-[-0.02em] text-ink">
-                  {formatNumber(value)}
-                  <span className="ml-1.5 text-[12px] font-normal text-ink-muted">
-                    {Math.round(share * 100)}%
-                  </span>
-                </p>
-              </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        ))}
       </div>
+
+      <div className="flex gap-1">
+        {months.map((month) => (
+          <span
+            key={month.label}
+            className="min-w-0 flex-1 truncate text-center text-[10.5px] text-ink-subtle"
+          >
+            {month.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Leyenda de dos series arbitrarias (no áreas). */
+export function SeriesLegend({ items }: { items: { label: string; color: string }[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {items.map((item) => (
+        <span key={item.label} className="flex items-center gap-1.5 text-[11px] text-ink-secondary">
+          <span
+            aria-hidden
+            className="size-2 rounded-full"
+            style={{ backgroundColor: item.color }}
+          />
+          {item.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -201,14 +269,14 @@ export function AreaSplitBar({
 /** Estado vacío coherente para las tarjetas de análisis. */
 export function ChartEmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
       <div aria-hidden className="flex items-end gap-1 opacity-40">
         <span className="h-3 w-1.5 rounded-t-[2px] bg-black/20" />
         <span className="h-5 w-1.5 rounded-t-[2px] bg-black/20" />
         <span className="h-2 w-1.5 rounded-t-[2px] bg-black/20" />
         <span className="h-4 w-1.5 rounded-t-[2px] bg-black/20" />
       </div>
-      <p className="max-w-[16rem] text-[12.5px] leading-relaxed text-ink-muted">{message}</p>
+      <p className="max-w-[17rem] text-[11.5px] leading-relaxed text-ink-muted">{message}</p>
     </div>
   );
 }
@@ -224,10 +292,10 @@ export function ChartCardHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="mb-3 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-[12px] text-ink-muted">{subtitle}</p>}
+        <h3 className="text-[12.5px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="shrink-0">{actions}</div>}
     </div>

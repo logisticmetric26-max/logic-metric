@@ -68,6 +68,59 @@ export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElemen
 }
 
 /**
+ * §17 · Indicador compacto del tablero.
+ *
+ * Versión densa de `StatCard`: seis de éstos caben en una franja de la altura
+ * de una fila de tabla, dejando el espacio vertical para los gráficos que
+ * explican los números. La cifra sigue siendo lo dominante dentro de la
+ * tarjeta, pero la tarjeta ya no domina la página.
+ *
+ * El color va en un punto de 6 px, no en el número ni en el fondo: seis cifras
+ * de colores distintos compiten entre sí y ninguna destaca.
+ */
+export function StatTile({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  tone?: "neutral" | "brand" | "success" | "warning" | "danger" | "info";
+}) {
+  const dots = {
+    neutral: "bg-ink-subtle",
+    brand: "bg-brand-500",
+    success: "bg-success-600",
+    warning: "bg-warning-600",
+    danger: "bg-danger-600",
+    info: "bg-info-600",
+  } as const;
+
+  return (
+    <div
+      className={cn(
+        "group flex h-full flex-col gap-1 rounded-xl border border-border bg-surface px-3.5 py-3",
+        "shadow-[var(--shadow-card)] transition-colors duration-200",
+        "hover:border-black/[0.10]",
+      )}
+    >
+      <span className="flex items-center gap-1.5">
+        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", dots[tone])} />
+        <span className="truncate text-[10.5px] font-semibold tracking-[0.03em] text-ink-muted uppercase">
+          {label}
+        </span>
+      </span>
+
+      <p className="text-[21px] leading-none font-semibold tracking-[-0.025em] text-ink">{value}</p>
+
+      {hint && <p className="truncate text-[10.5px] leading-tight text-ink-muted">{hint}</p>}
+    </div>
+  );
+}
+
+/**
  * §17 · Indicador del resumen operacional.
  *
  * La cifra es el elemento dominante, en cifras proporcionales (las tabulares
