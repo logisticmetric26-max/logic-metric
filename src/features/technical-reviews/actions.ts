@@ -242,11 +242,7 @@ export async function saveRejectionsAction(
 ): Promise<ActionResult<{ count: number }>> {
   const context = await requireActiveUser();
 
-  const canEdit =
-    context.permissions.includes(PERMISSIONS.technicalReview.close) ||
-    context.permissions.includes(PERMISSIONS.technicalReview.edit);
-
-  if (!canEdit) {
+  if (!context.permissions.includes(PERMISSIONS.technicalReview.close)) {
     return actionError("No tiene permisos para registrar motivos de rechazo.");
   }
 

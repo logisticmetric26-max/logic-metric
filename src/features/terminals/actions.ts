@@ -95,8 +95,9 @@ export async function updateTerminalAction(formData: FormData): Promise<ActionRe
 /**
  * Activa o desactiva un terminal.
  *
- * No existe borrado: un terminal desactivado conserva su historial de buses,
- * revisiones y auditoría (§15). La base tampoco expone una política de DELETE.
+ * Desactivar conserva su historial de buses, revisiones y auditoría (§15). La
+ * eliminación definitiva es una capacidad separada y sólo funciona cuando el
+ * terminal no tiene ninguna dependencia operacional.
  */
 export async function setTerminalActiveAction(
   id: string,

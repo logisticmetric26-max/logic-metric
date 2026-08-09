@@ -174,6 +174,39 @@ end;
 $$;
 
 -- =============================================================================
+-- Ver revisiones resuelve sus buses sin conceder administración de flota
+-- =============================================================================
+do $$
+declare
+  v_term  uuid := tests.create_terminal('Terminal Lectura Operacional');
+  v_role  uuid := tests.create_role('Consulta Revisión Sin Flota', array['technical_review.view']);
+  v_user  uuid := tests.create_user(tests.next_rut(), 'Consulta Revisión Sin Flota', v_term, v_role);
+  v_bus   uuid := tests.create_bus('OP01', 'OPPP01', v_term);
+  v_event uuid;
+  v_count bigint;
+begin
+  insert into public.technical_review_events (fleet_id, terminal_id, driver_name, created_by)
+  values (v_bus, v_term, 'Conductor Operacional', v_user)
+  returning id into v_event;
+
+  perform tests.authenticate_as(v_user);
+  perform tests.assert(not app.has_permission('fleet.view'),
+    'Consultar revisiones no concede la pantalla administrativa de Flota');
+
+  select count(*) into v_count from public.technical_review_events_view where id = v_event;
+  perform tests.assert_equals(v_count, 1::bigint,
+    'La vista de revisiones sí puede resolver los datos del bus');
+
+  update public.fleet set model = 'Cambio no autorizado' where id = v_bus;
+  get diagnostics v_count = row_count;
+  perform tests.assert_equals(v_count, 0::bigint,
+    'El acceso operacional de lectura no permite modificar el bus');
+
+  perform tests.become_owner();
+end;
+$$;
+
+-- =============================================================================
 -- Los documentos respetan el terminal (§43)
 -- =============================================================================
 do $$

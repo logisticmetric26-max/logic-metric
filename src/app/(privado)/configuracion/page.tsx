@@ -7,7 +7,6 @@ export default async function ConfiguracionPage() {
   const context = await requireAnyPermission([
     PERMISSIONS.fleet.view,
     PERMISSIONS.terminals.view,
-    PERMISSIONS.settings.manage,
   ]);
 
   if (context.permissions.includes(PERMISSIONS.fleet.view)) redirect("/configuracion/flota");

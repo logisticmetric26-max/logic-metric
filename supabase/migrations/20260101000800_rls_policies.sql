@@ -289,11 +289,11 @@ create policy technical_review_events_update on public.technical_review_events
   for update to authenticated
   using (
     app.can_access_terminal(terminal_id)
-    and (app.has_permission('technical_review.close') or app.has_permission('technical_review.edit'))
+    and app.has_permission('technical_review.close')
   )
   with check (
     app.can_access_terminal(terminal_id)
-    and (app.has_permission('technical_review.close') or app.has_permission('technical_review.edit'))
+    and app.has_permission('technical_review.close')
   );
 
 create policy technical_review_events_delete on public.technical_review_events
@@ -409,7 +409,7 @@ create policy technical_review_rejections_select on public.technical_review_reje
 create policy technical_review_rejections_write on public.technical_review_rejections
   for all to authenticated
   using (
-    (app.has_permission('technical_review.close') or app.has_permission('technical_review.edit'))
+    app.has_permission('technical_review.close')
     and exists (
       select 1 from public.technical_review_events e
       where e.id = technical_review_event_id
@@ -417,7 +417,7 @@ create policy technical_review_rejections_write on public.technical_review_rejec
     )
   )
   with check (
-    (app.has_permission('technical_review.close') or app.has_permission('technical_review.edit'))
+    app.has_permission('technical_review.close')
     and exists (
       select 1 from public.technical_review_events e
       where e.id = technical_review_event_id
@@ -464,22 +464,5 @@ create policy technical_review_not_sent_delete on public.technical_review_not_se
     and app.can_access_terminal(terminal_id)
   );
 
--- =============================================================================
--- audit_logs · append-only
--- =============================================================================
--- Sólo SELECT. No hay políticas de INSERT/UPDATE/DELETE para `authenticated`:
--- la bitácora la escribe `app.write_audit` (SECURITY DEFINER), de modo que
--- nadie puede fabricar ni borrar una entrada desde la aplicación (§57).
--- =============================================================================
-grant select on public.audit_logs to authenticated;
-
-create policy audit_logs_select on public.audit_logs
-  for select to authenticated
-  using (
-    app.has_permission('audit.view')
-    and (
-      app.has_global_access()
-      or terminal_id is null
-      or app.can_access_terminal(terminal_id)
-    )
-  );
+-- `audit_logs` permanece interna y append-only. No se publica SELECT hasta que
+-- exista una pantalla real de auditoría con su propia capacidad verificable.

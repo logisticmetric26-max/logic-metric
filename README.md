@@ -276,9 +276,13 @@ Los permisos son un catálogo en base de datos, no constantes repartidas por los
 componentes. La aplicación nunca pregunta «¿el rol se llama X?», sino «¿tiene
 este permiso?».
 
+- El **cargo** es un texto descriptivo; no concede acceso por sí solo.
+- El **rol de permisos** es el que determina las pantallas y acciones del cargo.
 - **Roles** se crean y editan desde *Acceso → Roles y permisos*.
 - **Excepciones por usuario** permiten conceder o revocar un permiso concreto
   por encima de su rol.
+- Las dependencias se completan automáticamente: una acción nunca queda
+  concedida si el rol no puede entrar a su pantalla o terminar el flujo.
 - El rol **Administrador** es de sistema: tiene todos los permisos, no puede
   eliminarse, y recibe automáticamente cualquier permiso que agregue una
   migración futura.
@@ -286,19 +290,19 @@ este permiso?».
 Permisos disponibles:
 
 ```
-technical_review.view / create / close / edit / delete
+technical_review.view / create / close / delete
 technical_review_documents.view / upload
 technical_review_not_sent.view / create / edit / delete
 fleet.view / create / edit
-terminals.view / create / edit
+terminals.view / create / edit / delete
 users.view / create / edit / suspend / delete
 access.manage
 settings.manage
-audit.view
 ```
 
-> `fleet.view` es necesario para operar revisiones: sin él no se puede buscar el
-> bus al registrar una salida o un no envío.
+`technical_review.edit` y `audit.view` no se publican: no existe una operación
+independiente para editar procesos cerrados ni una pantalla de consulta de la
+bitácora. La auditoría continúa siendo interna, inmutable y obligatoria.
 
 ---
 

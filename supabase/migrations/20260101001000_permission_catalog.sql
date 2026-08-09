@@ -11,8 +11,7 @@ insert into public.permissions (code, module, label, description, sort_order) va
   ('technical_review.view',              'technical_review', 'Ver revisiones técnicas',        'Consultar procesos, historial y detalle.',           10),
   ('technical_review.create',            'technical_review', 'Registrar salida a planta',      'Abrir un proceso de revisión técnica.',              20),
   ('technical_review.close',             'technical_review', 'Cerrar revisión',                'Registrar el regreso y el resultado.',               30),
-  ('technical_review.edit',              'technical_review', 'Editar revisión',                'Corregir datos y motivos de rechazo.',               40),
-  ('technical_review.delete',            'technical_review', 'Eliminar revisión',              'Eliminar un proceso de revisión técnica.',           50),
+  ('technical_review.delete',            'technical_review', 'Eliminar procesos del historial','Eliminar un proceso cerrado, sus rechazos, análisis y PDF adjuntos.', 50),
 
   -- Documentos
   ('technical_review_documents.view',    'technical_review', 'Ver documentos',                 'Descargar documentos asociados a una revisión.',     60),
@@ -37,14 +36,13 @@ insert into public.permissions (code, module, label, description, sort_order) va
   -- Usuarios
   ('users.view',                         'access',           'Ver usuarios',                   'Consultar usuarios de terminales autorizados.',     400),
   ('users.create',                       'access',           'Crear usuarios',                 'Dar de alta usuarios.',                             410),
-  ('users.edit',                         'access',           'Editar usuarios',                'Modificar datos de un usuario.',                    420),
+  ('users.edit',                         'access',           'Editar datos de usuarios',       'Modificar nombre, cargo descriptivo y contraseña; no cambia roles ni accesos.', 420),
   ('users.suspend',                      'access',           'Activar / suspender usuarios',   'Habilitar o bloquear el acceso de un usuario.',      430),
   ('users.delete',                       'access',           'Eliminar usuarios',              'Eliminar definitivamente un usuario.',              440),
-  ('access.manage',                      'access',           'Administrar roles y permisos',   'Gestionar roles, permisos y terminales asignados.',  450),
+  ('access.manage',                      'access',           'Administrar roles y permisos',   'Asignar roles de permisos, excepciones y terminales autorizados.', 450),
 
-  -- Plataforma
-  ('settings.manage',                    'settings',         'Administrar configuración',      'Modificar parámetros operacionales.',               500),
-  ('audit.view',                         'settings',         'Ver auditoría',                  'Consultar la bitácora de acciones.',                510);
+  -- Configuración operacional de revisiones
+  ('settings.manage',                    'technical_review', 'Configurar aviso de vencimiento','Modificar los días usados para marcar revisiones próximas a vencer.', 75);
 
 -- -----------------------------------------------------------------------------
 -- Rol de sistema

@@ -16,6 +16,7 @@ interface Props {
   user?: ProfileViewRow;
   terminals: Pick<TerminalRow, "id" | "name" | "active">[];
   roles: Pick<RoleViewRow, "id" | "name">[];
+  canEditProfile: boolean;
   canManageAccess: boolean;
   canGrantGlobal: boolean;
   onClose: () => void;
@@ -33,6 +34,7 @@ export function UserFormModal({
   user,
   terminals,
   roles,
+  canEditProfile,
   canManageAccess,
   canGrantGlobal,
   onClose,
@@ -142,10 +144,17 @@ export function UserFormModal({
               maxLength={160}
               autoFocus={Boolean(user)}
               invalid={Boolean(fieldErrors.full_name)}
+              disabled={Boolean(user) && !canEditProfile}
             />
           </Field>
 
-          <Field label="Cargo" required error={fieldErrors.job_title} htmlFor="user-job">
+          <Field
+            label="Cargo (descriptivo)"
+            required
+            hint="El cargo identifica la función; los permisos los define el rol."
+            error={fieldErrors.job_title}
+            htmlFor="user-job"
+          >
             <Input
               id="user-job"
               name="job_title"
@@ -153,6 +162,7 @@ export function UserFormModal({
               required
               maxLength={120}
               invalid={Boolean(fieldErrors.job_title)}
+              disabled={Boolean(user) && !canEditProfile}
             />
           </Field>
 
@@ -168,6 +178,7 @@ export function UserFormModal({
               defaultValue={user?.primary_terminal_id ?? ""}
               required
               invalid={Boolean(fieldErrors.primary_terminal_id)}
+              disabled={Boolean(user) && !canManageAccess}
             >
               <option value="" disabled>
                 Seleccione…
@@ -181,13 +192,20 @@ export function UserFormModal({
             </Select>
           </Field>
 
-          <Field label="Rol" required error={fieldErrors.role_id} htmlFor="user-role">
+          <Field
+            label="Rol de permisos"
+            required
+            hint="Determina exactamente qué pantallas y acciones puede utilizar."
+            error={fieldErrors.role_id}
+            htmlFor="user-role"
+          >
             <Select
               id="user-role"
               name="role_id"
               defaultValue={user?.role_id ?? ""}
               required
               invalid={Boolean(fieldErrors.role_id)}
+              disabled={Boolean(user) && !canManageAccess}
             >
               <option value="" disabled>
                 Seleccione…

@@ -309,9 +309,7 @@ declare
   v_origin      text;
   v_detection   text;
 begin
-  if not (app.has_permission('technical_review.close') or app.has_permission('technical_review.edit')) then
-    raise exception 'PERMISSION_DENIED:technical_review.close' using errcode = '42501';
-  end if;
+  perform app.assert_permission('technical_review.close');
 
   select * into v_event
   from public.technical_review_events

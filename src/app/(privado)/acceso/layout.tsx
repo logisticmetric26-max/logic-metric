@@ -37,7 +37,7 @@ export default async function AccesoLayout({ children }: { children: React.React
     <>
       <PageHeader
         title="Acceso"
-        description="Usuarios, roles, permisos y terminales autorizados."
+        description="Usuarios, cargos descriptivos, roles de permisos y terminales autorizados."
       />
       <Tabs items={tabs} className="mb-5" />
       {children}

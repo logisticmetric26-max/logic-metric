@@ -222,7 +222,7 @@ export function UsersManager({
                           icon: <Radio className="size-3" aria-hidden />,
                         },
                         {
-                          label: "Cargo",
+                          label: "Cargo descriptivo",
                           value: user.job_title,
                           icon: <BriefcaseBusiness className="size-3" aria-hidden />,
                         },
@@ -232,7 +232,7 @@ export function UsersManager({
                           icon: <MapPin className="size-3" aria-hidden />,
                         },
                         {
-                          label: "Rol",
+                          label: "Rol de permisos",
                           value: user.role_name,
                           icon: <ShieldCheck className="size-3" aria-hidden />,
                         },
@@ -269,6 +269,7 @@ export function UsersManager({
           open
           terminals={terminals}
           roles={roles}
+          canEditProfile
           canManageAccess={can.manageAccess}
           canGrantGlobal={can.manageAccess && currentUserHasGlobalAccess}
           onClose={() => setCreating(false)}
@@ -279,12 +280,13 @@ export function UsersManager({
         />
       )}
 
-      {can.edit && editing && (
+      {(can.edit || can.manageAccess) && editing && (
         <UserFormModal
           open
           user={editing}
           terminals={terminals}
           roles={roles}
+          canEditProfile={can.edit}
           canManageAccess={can.manageAccess}
           canGrantGlobal={can.manageAccess && currentUserHasGlobalAccess}
           onClose={() => setEditing(null)}
@@ -420,7 +422,12 @@ function UserRowMenu({
 
   // §56 · nadie administra su propia cuenta desde aquí
   const items = [
-    can.edit && !isSelf && { label: "Editar", icon: Pencil, action: onEdit },
+    (can.edit || can.manageAccess) &&
+      !isSelf && {
+        label: can.edit ? "Editar usuario" : "Administrar acceso",
+        icon: Pencil,
+        action: onEdit,
+      },
     can.manageAccess && !isSelf && { label: "Permisos", icon: ShieldCheck, action: onPermissions },
     can.edit && !isSelf && { label: "Cambiar contraseña", icon: KeyRound, action: onResetPassword },
     can.suspend &&

@@ -38,7 +38,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Configuración",
     href: "/configuracion",
     icon: Settings,
-    permissions: [PERMISSIONS.fleet.view, PERMISSIONS.terminals.view, PERMISSIONS.settings.manage],
+    permissions: [PERMISSIONS.fleet.view, PERMISSIONS.terminals.view],
     group: "footer",
     description: "Flota y terminales",
   },
@@ -61,7 +61,7 @@ export function visibleNavItems(permissions: readonly string[]): NavItem[] {
 /** Título legible de cada ruta, para migas de pan y encabezados. */
 export const ROUTE_LABELS: Record<string, string> = {
   "revision-tecnica": "Revisión Técnica",
-  "en-revision": "En revisión",
+  "en-revision": "Enviar a planta",
   "no-enviados": "No enviados",
   rechazados: "Rechazados",
   vencimientos: "Vencimientos",

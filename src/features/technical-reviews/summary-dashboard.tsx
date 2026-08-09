@@ -69,7 +69,7 @@ export function SummaryDashboard({
 
   const topMetrics = [
     {
-      label: "En revision",
+      label: "Enviar a planta",
       value: summary.in_review,
       hint: longestOpen > 0 ? `Mayor permanencia: ${formatNumber(longestOpen)} d` : "Sin atrasos",
       icon: <Timer className="size-5" aria-hidden />,

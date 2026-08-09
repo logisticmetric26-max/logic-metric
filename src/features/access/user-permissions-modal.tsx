@@ -9,6 +9,12 @@ import { useToast } from "@/components/ui/toast";
 import { setUserPermissionOverridesAction } from "@/features/access/actions";
 import type { PermissionRow, ProfileViewRow, RoleViewRow } from "@/types/database.types";
 import { cn } from "@/lib/utils";
+import {
+  grantPermissionWithDependencies,
+  isPermissionCode,
+  revokePermissionWithDependents,
+  type PermissionCode,
+} from "@/lib/auth/permissions";
 
 type OverrideState = "INHERITED" | "GRANTED" | "REVOKED";
 
@@ -59,6 +65,7 @@ export function UserPermissionsModal({
   const grouped = useMemo(() => {
     const groups = new Map<string, PermissionRow[]>();
     for (const permission of permissions) {
+      if (!isPermissionCode(permission.code)) continue;
       const list = groups.get(permission.module) ?? [];
       list.push(permission);
       groups.set(permission.module, list);
@@ -78,10 +85,32 @@ export function UserPermissionsModal({
   }
 
   function setState(code: string, state: OverrideState) {
+    if (!isPermissionCode(code)) return;
+
     setOverrides((current) => {
-      const next = { ...current };
-      if (state === "INHERITED") delete next[code];
-      else next[code] = state;
+      let effective = new Set<PermissionCode>();
+
+      for (const permission of permissions) {
+        if (!isPermissionCode(permission.code)) continue;
+        const override = current[permission.code] ?? "INHERITED";
+        const enabled =
+          override === "GRANTED" ||
+          (override === "INHERITED" && rolePermissions.has(permission.code));
+        if (enabled) effective.add(permission.code);
+      }
+
+      const enabled = state === "GRANTED" || (state === "INHERITED" && rolePermissions.has(code));
+      effective = enabled
+        ? grantPermissionWithDependencies(effective, code)
+        : revokePermissionWithDependents(effective, code);
+
+      const next: Record<string, OverrideState> = {};
+      for (const permission of permissions) {
+        if (!isPermissionCode(permission.code)) continue;
+        const inherited = rolePermissions.has(permission.code);
+        const selected = effective.has(permission.code);
+        if (selected !== inherited) next[permission.code] = selected ? "GRANTED" : "REVOKED";
+      }
       return next;
     });
   }
@@ -130,7 +159,8 @@ export function UserPermissionsModal({
       <div className="flex flex-col gap-4">
         <Alert tone="info">
           Por defecto el usuario hereda los permisos de su rol. Las excepciones definidas aquí
-          pesan más que el rol y sólo afectan a este usuario.
+          pesan más que el rol y sólo afectan a este usuario. Los requisitos de cada capacidad se
+          ajustan automáticamente para evitar accesos incompletos.
         </Alert>
 
         {overrideCount > 0 && (
