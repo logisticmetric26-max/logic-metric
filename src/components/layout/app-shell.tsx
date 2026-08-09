@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LogOut, Menu, PanelLeftClose, User, X } from "lucide-react";
+import { ChevronRight, Menu, PanelLeftClose, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatRut } from "@/lib/auth/rut";
 import { visibleNavItems, ROUTE_LABELS } from "@/components/layout/navigation";
-import { signOutAction } from "@/features/auth/actions";
-import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
+import { ProfileModal } from "@/features/profile/profile-modal";
+import { PresenceHeartbeat } from "@/features/profile/presence-heartbeat";
+import { avatarUrl } from "@/lib/avatar";
 import type { CurrentUserContext } from "@/types/database.types";
 
 /**
@@ -29,9 +30,12 @@ import type { CurrentUserContext } from "@/types/database.types";
 export function AppShell({
   context,
   defaultCollapsed,
+  supabaseUrl,
   children,
 }: {
   context: CurrentUserContext;
+  /** Base pública de Supabase, para componer la URL de la foto de perfil. */
+  supabaseUrl: string;
   /**
    * Preferencia de barra lateral colapsada, leída de una cookie en el servidor.
    * Viene como prop —y no de `localStorage`— para que el primer render ya sea
@@ -43,6 +47,14 @@ export function AppShell({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const photo = avatarUrl(context.profile.avatar_path, supabaseUrl);
+
+  function openProfile() {
+    setProfileOpen(true);
+    setMobileOpen(false);
+  }
 
   const items = visibleNavItems(context.permissions);
   const mainItems = items.filter((item) => item.group === "main");
@@ -74,6 +86,8 @@ export function AppShell({
           footerItems={footerItems}
           pathname={pathname}
           context={context}
+          photo={photo}
+          onOpenProfile={openProfile}
         />
 
         <button
@@ -123,6 +137,8 @@ export function AppShell({
               footerItems={footerItems}
               pathname={pathname}
               context={context}
+              photo={photo}
+              onOpenProfile={openProfile}
               hideBrand
               // Navegar cierra el menú: nadie quiere cerrarlo a mano cada vez
               onNavigate={() => setMobileOpen(false)}
@@ -133,11 +149,26 @@ export function AppShell({
 
       {/* ── Área principal ─────────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <Header context={context} onOpenMenu={() => setMobileOpen(true)} />
+        <Header
+          context={context}
+          photo={photo}
+          onOpenMenu={() => setMobileOpen(true)}
+          onOpenProfile={openProfile}
+        />
         <main className="min-w-0 flex-1 px-4 pb-6 sm:px-6 lg:px-0">
           <div className="mx-auto w-full max-w-[1560px]">{children}</div>
         </main>
       </div>
+
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        context={context}
+        supabaseUrl={supabaseUrl}
+      />
+
+      {/* Marca presencia mientras la pestaña esté visible */}
+      <PresenceHeartbeat />
     </div>
   );
 }
@@ -172,6 +203,8 @@ function SidebarContent({
   footerItems,
   pathname,
   context,
+  photo,
+  onOpenProfile,
   hideBrand,
   onNavigate,
 }: {
@@ -180,6 +213,8 @@ function SidebarContent({
   footerItems: ReturnType<typeof visibleNavItems>;
   pathname: string;
   context: CurrentUserContext;
+  photo: string | null;
+  onOpenProfile: () => void;
   hideBrand?: boolean;
   onNavigate?: () => void;
 }) {
@@ -229,12 +264,38 @@ function SidebarContent({
         )}
       </nav>
 
-      {!collapsed && (
-        <div className="safe-bottom mx-2 mb-2 rounded-xl bg-fill-subtle px-3 py-2.5">
-          <p className="truncate text-[12.5px] font-medium text-ink">{context.profile.full_name}</p>
-          <p className="truncate text-[11px] text-ink-muted">{context.profile.job_title}</p>
-        </div>
-      )}
+      {/* Bloque de usuario · abre el perfil.
+          Antes era texto muerto: mostraba quién eras y no llevaba a ninguna
+          parte, con lo que la foto y la contraseña no tenían dónde vivir. */}
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        aria-label="Abrir mi perfil"
+        className={cn(
+          "safe-bottom group mx-2 mb-2 flex items-center gap-2.5 rounded-xl text-left",
+          "transition-colors duration-200 hover:bg-fill-subtle",
+          collapsed ? "justify-center p-2" : "px-2.5 py-2",
+        )}
+      >
+        <Avatar name={context.profile.full_name} src={photo} size={collapsed ? "md" : "md"} />
+
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12.5px] font-medium text-ink">
+                {context.profile.full_name}
+              </span>
+              <span className="block truncate text-[11px] text-ink-muted">
+                {context.profile.job_title}
+              </span>
+            </span>
+            <Settings2
+              className="size-4 shrink-0 text-ink-subtle transition-colors group-hover:text-ink-secondary"
+              aria-hidden
+            />
+          </>
+        )}
+      </button>
     </>
   );
 }
@@ -298,10 +359,18 @@ function NavLink({
   );
 }
 
-function Header({ context, onOpenMenu }: { context: CurrentUserContext; onOpenMenu: () => void }) {
+function Header({
+  context,
+  photo,
+  onOpenMenu,
+  onOpenProfile,
+}: {
+  context: CurrentUserContext;
+  photo: string | null;
+  onOpenMenu: () => void;
+  onOpenProfile: () => void;
+}) {
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
-
   const crumbs = buildBreadcrumbs(pathname);
 
   return (
@@ -347,67 +416,28 @@ function Header({ context, onOpenMenu }: { context: CurrentUserContext; onOpenMe
         </ol>
       </nav>
 
+      {/* Identidad · abre el perfil.
+          Un solo destino desde los dos sitios donde aparece el usuario: antes
+          este botón desplegaba un menú con la ficha en modo lectura y nada que
+          hacer con ella. */}
       <div className="flex flex-1 justify-end sm:flex-none">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((current) => !current)}
-            className="flex items-center gap-2.5 rounded-xl py-1.5 pr-2.5 pl-1.5 transition-colors hover:bg-fill"
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-b from-brand-solid-from to-brand-solid-to text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.35),0_2px_6px_-2px_rgb(10_108_255/0.5)]">
-              <User className="size-4" aria-hidden />
-            </span>
-            <span className="hidden text-left sm:block">
-              <span className="block max-w-40 truncate text-[12.5px] font-medium text-ink">
-                {context.profile.full_name}
-              </span>
-              <span className="block text-[11px] text-ink-muted">{context.profile.role_name}</span>
-            </span>
-          </button>
-
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden />
-              <div
-                role="menu"
-                className="liquid-thick edge animate-pop-in absolute right-0 z-20 mt-2 w-[17rem] origin-top-right rounded-2xl p-1.5 shadow-[var(--shadow-overlay)]"
-              >
-                <div className="px-3 py-2.5">
-                  <p className="truncate text-[13px] font-semibold text-ink">
-                    {context.profile.full_name}
-                  </p>
-                  <p className="mt-0.5 font-mono text-[11.5px] text-ink-muted">
-                    {formatRut(context.profile.rut)}
-                  </p>
-                  <p className="mt-1 truncate text-[11.5px] text-ink-muted">
-                    {context.profile.job_title}
-                  </p>
-                  <p className="mt-1.5 text-[11.5px] text-ink-subtle">
-                    {context.profile.has_global_access
-                      ? "Acceso a todos los terminales"
-                      : `${context.terminals.length} terminal${context.terminals.length === 1 ? "" : "es"} autorizado${context.terminals.length === 1 ? "" : "s"}`}
-                  </p>
-                </div>
-
-                <div className="mx-1 h-px bg-border" />
-
-                <form action={signOutAction} className="pt-1.5">
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    fullWidth
-                    className="justify-start"
-                    icon={<LogOut className="size-4" aria-hidden />}
-                  >
-                    Cerrar sesión
-                  </Button>
-                </form>
-              </div>
-            </>
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          aria-label="Abrir mi perfil"
+          className={cn(
+            "group flex items-center gap-2.5 rounded-full py-1 pr-1 pl-1 sm:pr-3",
+            "transition-colors duration-200 hover:bg-fill",
           )}
-        </div>
+        >
+          <Avatar name={context.profile.full_name} src={photo} size="md" />
+          <span className="hidden text-left sm:block">
+            <span className="block max-w-40 truncate text-[12.5px] font-medium text-ink">
+              {context.profile.full_name}
+            </span>
+            <span className="block text-[11px] text-ink-muted">{context.profile.role_name}</span>
+          </span>
+        </button>
       </div>
     </header>
   );

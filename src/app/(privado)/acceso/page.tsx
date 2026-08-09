@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/auth/session";
+import { getPublicEnv } from "@/lib/env";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { ErrorState } from "@/components/ui/feedback";
 import { UsersManager } from "@/features/access/users-manager";
@@ -97,6 +98,7 @@ export default async function AccesoPage({
         manageAccess: context.permissions.includes(PERMISSIONS.access.manage),
       }}
       activeFilterCount={activeFilterCount}
+      supabaseUrl={getPublicEnv().supabaseUrl}
     />
   );
 }

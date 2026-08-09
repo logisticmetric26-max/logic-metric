@@ -313,12 +313,18 @@ export type ProfileViewRow = {
   job_title: string;
   status: UserStatus;
   has_global_access: boolean;
+  avatar_path: string | null;
   primary_terminal_id: string;
   primary_terminal_name: string;
   role_id: string;
   role_name: string;
   additional_terminals: TerminalSummary[];
   permission_overrides: PermissionOverrideSummary[];
+  /** Último inicio de sesión correcto. `null` = nunca se ha conectado. */
+  last_login_at: string | null;
+  /** Última señal de una pestaña abierta; decide si está conectado ahora. */
+  last_seen_at: string | null;
+  login_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -355,6 +361,7 @@ export type CurrentUserContext = {
     job_title: string;
     status: UserStatus;
     has_global_access: boolean;
+    avatar_path: string | null;
     primary_terminal_id: string;
     role_id: string;
     role_name: string;
@@ -542,6 +549,14 @@ export type Database = {
       current_user_context: {
         Args: Record<string, never>;
         Returns: CurrentUserContext | null;
+      };
+      touch_presence: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      set_own_avatar: {
+        Args: { p_path: string | null };
+        Returns: undefined;
       };
       open_technical_review: {
         Args: { p_fleet_id: string; p_driver_name: string; p_departure_at?: string | null };

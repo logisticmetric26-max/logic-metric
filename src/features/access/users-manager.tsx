@@ -17,6 +17,9 @@ import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Badge, UserStatusBadge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { PresenceAutoRefresh, PresenceCell } from "@/features/access/presence-cell";
+import { avatarUrl } from "@/lib/avatar";
 import { EmptyState } from "@/components/ui/feedback";
 import { FilterBar, FilterSelect, SearchField } from "@/components/ui/filters";
 import { Pagination } from "@/components/ui/pagination";
@@ -58,6 +61,8 @@ interface Props {
   permissions: PermissionRow[];
   currentUserId: string;
   currentUserHasGlobalAccess: boolean;
+  /** Base pública de Supabase, para componer la URL de cada foto. */
+  supabaseUrl: string;
   can: {
     create: boolean;
     edit: boolean;
@@ -81,6 +86,7 @@ export function UsersManager({
   currentUserHasGlobalAccess,
   can,
   activeFilterCount,
+  supabaseUrl,
 }: Props) {
   const toast = useToast();
   const [creating, setCreating] = useState(false);
@@ -128,6 +134,8 @@ export function UsersManager({
 
   return (
     <>
+      {/* La conexión se vuelve a leer del servidor cada dos minutos */}
+      <PresenceAutoRefresh />
       <Card>
         <FilterBar
           activeCount={activeFilterCount}
@@ -185,6 +193,7 @@ export function UsersManager({
                   <THead>
                     <TH>RUT</TH>
                     <TH>Nombre</TH>
+                    <TH>Conexión</TH>
                     <TH>Cargo</TH>
                     <TH>Terminal</TH>
                     <TH>Rol</TH>
@@ -197,10 +206,25 @@ export function UsersManager({
                       <TR key={user.id}>
                         <TD className="font-mono text-xs whitespace-nowrap">{formatRut(user.rut)}</TD>
                         <TD className="font-medium">
-                          <span className="block">{user.full_name}</span>
-                          {user.id === currentUserId && (
-                            <span className="text-xs font-normal text-ink-subtle">(usted)</span>
-                          )}
+                          <span className="flex items-center gap-2.5">
+                            <Avatar
+                              name={user.full_name}
+                              src={avatarUrl(user.avatar_path, supabaseUrl)}
+                              size="sm"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate">{user.full_name}</span>
+                              {user.id === currentUserId && (
+                                <span className="text-xs font-normal text-ink-subtle">(usted)</span>
+                              )}
+                            </span>
+                          </span>
+                        </TD>
+                        <TD>
+                          <PresenceCell
+                            lastSeenAt={user.last_seen_at}
+                            lastLoginAt={user.last_login_at}
+                          />
                         </TD>
                         <TD className="text-ink-secondary">{user.job_title}</TD>
                         <TD className="text-ink-secondary">{user.primary_terminal_name}</TD>
@@ -239,6 +263,15 @@ export function UsersManager({
                       subtitle={formatRut(user.rut)}
                       badge={<UserStatusBadge status={user.status} />}
                       fields={[
+                        {
+                          label: "Conexión",
+                          value: (
+                            <PresenceCell
+                              lastSeenAt={user.last_seen_at}
+                              lastLoginAt={user.last_login_at}
+                            />
+                          ),
+                        },
                         { label: "Cargo", value: user.job_title },
                         { label: "Terminal", value: user.primary_terminal_name },
                         { label: "Rol", value: user.role_name },
