@@ -19,6 +19,7 @@ import { FilterBar, FilterDate, FilterSelect, SearchField } from "@/components/u
 import { Pagination } from "@/components/ui/pagination";
 import { formatDateOnly, formatDateTime, formatNumber } from "@/lib/format";
 import { isImportedReview } from "@/features/technical-reviews/imported-history";
+import { HistoryDeleteButton } from "@/features/technical-reviews/history-delete-button";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
 import { reportError } from "@/lib/errors";
 
@@ -90,6 +91,7 @@ export default async function HistorialPage({
     params.desde,
     params.hasta,
   ].filter(Boolean).length;
+  const canDelete = context.permissions.includes(PERMISSIONS.technicalReview.delete);
 
   return (
     <Card>
@@ -149,21 +151,18 @@ export default async function HistorialPage({
 
           <div className="space-y-3 bg-surface-subtle/35 p-3 sm:p-4">
             {events.map((event) => (
-              <Link
+              <article
                 key={event.id}
-                href={`/revision-tecnica/detalle/${event.id}`}
-                aria-label={`Ver detalle del bus ${event.internal_number}, patente ${event.ppu}`}
-                className="group block rounded-xl bg-surface shadow-[var(--shadow-flat)] ring-1 ring-border transition-all duration-200 hover:-translate-y-px hover:shadow-[var(--shadow-raised)] hover:ring-border-strong focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="group relative overflow-hidden rounded-xl bg-surface shadow-[var(--shadow-flat)] ring-1 ring-border transition-all duration-200 hover:-translate-y-px hover:shadow-[var(--shadow-raised)] hover:ring-border-strong"
               >
-                <article className="relative overflow-hidden rounded-xl">
-                  <span
-                    aria-hidden
-                    className={`absolute inset-y-0 left-0 w-1 ${
-                      event.result === "APPROVED" ? "bg-success-600" : "bg-danger-600"
-                    }`}
-                  />
+                <span
+                  aria-hidden
+                  className={`absolute inset-y-0 left-0 w-1 ${
+                    event.result === "APPROVED" ? "bg-success-600" : "bg-danger-600"
+                  }`}
+                />
 
-                  <div className="p-4 pl-5 sm:p-5 sm:pl-6 min-[1100px]:grid min-[1100px]:grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.35fr)_minmax(9rem,0.8fr)_auto] min-[1100px]:items-center min-[1100px]:gap-4">
+                <div className="p-4 pl-5 sm:p-5 sm:pl-6 min-[1100px]:grid min-[1100px]:grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.35fr)_minmax(9rem,0.8fr)_auto] min-[1100px]:items-center min-[1100px]:gap-4">
                     <div className="flex min-w-0 items-start gap-3">
                       <span
                         className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
@@ -248,17 +247,29 @@ export default async function HistorialPage({
 
                     <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4 min-[1100px]:mt-0 min-[1100px]:flex-col min-[1100px]:items-end min-[1100px]:border-t-0 min-[1100px]:pt-0">
                       <ReviewStatusBadge status={event.status} result={event.result} />
-                      <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand-700 transition-colors group-hover:text-brand-800">
-                        Ver detalle
-                        <ArrowUpRight
-                          className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                          aria-hidden
-                        />
-                      </span>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        <Link
+                          href={`/revision-tecnica/detalle/${event.id}`}
+                          aria-label={`Ver detalle del bus ${event.internal_number}, patente ${event.ppu}`}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-sm px-3 text-[12.5px] font-semibold text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800 focus-visible:ring-2 focus-visible:ring-brand-500"
+                        >
+                          Ver detalle
+                          <ArrowUpRight
+                            className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                            aria-hidden
+                          />
+                        </Link>
+                        {canDelete && (
+                          <HistoryDeleteButton
+                            eventId={event.id}
+                            internalNumber={event.internal_number}
+                            ppu={event.ppu}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </article>
-              </Link>
+              </article>
             ))}
           </div>
           <Pagination page={page} pageSize={PAGE_SIZE} total={count ?? 0} />

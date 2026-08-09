@@ -79,6 +79,11 @@ export const saveRejectionsSchema = z.object({
   items: z.array(rejectionItemSchema),
 });
 
+// Una eliminación histórica siempre apunta a un único evento conocido.
+export const deleteReviewHistorySchema = z.object({
+  event_id: uuidSchema,
+});
+
 // §30-§32 · Registro de bus NO enviado a planta
 export const notSentSchema = z.object({
   fleet_id: uuidSchema,

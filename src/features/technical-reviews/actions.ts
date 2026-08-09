@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireActiveUser } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { actionError, actionSuccess, reportError, type ActionResult } from "@/lib/errors";
@@ -9,6 +10,7 @@ import { toFieldErrors } from "@/schemas/common";
 import { DOCUMENTS_BUCKET } from "@/lib/documents";
 import {
   closeReviewSchema,
+  deleteReviewHistorySchema,
   documentSchema,
   notSentSchema,
   notSentUpdateSchema,
@@ -265,6 +267,93 @@ export async function saveRejectionsAction(
 
   revalidateReviews();
   return actionSuccess({ count: data as number });
+}
+
+// =============================================================================
+// Historial · eliminación completa de un proceso cerrado
+// =============================================================================
+/**
+ * Elimina un único evento histórico y todo lo que le pertenece.
+ *
+ * PostgreSQL elimina en cascada documentos, análisis y motivos detectados. Los
+ * archivos viven fuera de esa transacción, en Storage, por lo que se eliminan
+ * primero y sólo después se borra el evento. El cliente de servicio se limita
+ * a esa limpieza física; la lectura y el borrado del evento siguen pasando por
+ * la sesión del usuario y sus políticas RLS.
+ */
+export async function deleteReviewHistoryAction(eventId: string): Promise<ActionResult> {
+  const context = await requireActiveUser();
+
+  if (!context.permissions.includes(PERMISSIONS.technicalReview.delete)) {
+    return actionError("No tiene permisos para eliminar registros del historial.");
+  }
+
+  const parsed = deleteReviewHistorySchema.safeParse({ event_id: eventId });
+  if (!parsed.success) return actionError("El registro histórico indicado no es válido.");
+
+  const supabase = await createClient();
+  const { data: event, error: eventError } = await supabase
+    .from("technical_review_events")
+    .select("id, status")
+    .eq("id", parsed.data.event_id)
+    .maybeSingle();
+
+  if (eventError) return actionError(reportError("deleteReviewHistory.read", eventError));
+  if (!event) return actionError("El registro no existe o no tiene acceso a su terminal.");
+  if (event.status !== "CLOSED") {
+    return actionError("Sólo se pueden eliminar procesos que ya están en el historial.");
+  }
+
+  // La metadata puede no ser visible para un rol que sí posee el permiso de
+  // eliminación. Se usa service_role únicamente después de autorizar y de
+  // comprobar con RLS que el evento pertenece a un terminal accesible.
+  const admin = createAdminClient();
+  const { data: documents, error: documentsError } = await admin
+    .from("technical_review_documents")
+    .select("storage_path")
+    .eq("technical_review_event_id", event.id);
+
+  if (documentsError) {
+    return actionError(reportError("deleteReviewHistory.documents", documentsError));
+  }
+
+  const storagePaths = [
+    ...new Set(
+      (documents ?? [])
+        .map((document) => document.storage_path.trim())
+        .filter((path) => path.length > 0),
+    ),
+  ];
+
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await admin.storage
+      .from(DOCUMENTS_BUCKET)
+      .remove(storagePaths);
+
+    if (storageError) {
+      return actionError(reportError("deleteReviewHistory.storage", storageError));
+    }
+  }
+
+  // El FK ON DELETE CASCADE retira documentos, análisis OCR y rechazos. Al
+  // usar el cliente de sesión, RLS vuelve a validar el permiso y el terminal en
+  // el instante exacto del borrado, además de conservar el actor en auditoría.
+  const { data: deleted, error: deleteError } = await supabase
+    .from("technical_review_events")
+    .delete()
+    .eq("id", event.id)
+    .eq("status", "CLOSED")
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) return actionError(reportError("deleteReviewHistory.delete", deleteError));
+  if (!deleted) {
+    return actionError("El registro ya no está disponible o cambió mientras se eliminaba.");
+  }
+
+  revalidateReviews();
+  revalidatePath(`/revision-tecnica/detalle/${event.id}`);
+  return actionSuccess();
 }
 
 // =============================================================================
