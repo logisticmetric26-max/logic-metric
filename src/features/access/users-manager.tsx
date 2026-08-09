@@ -133,7 +133,7 @@ export function UsersManager({
     <>
       {/* La conexión se vuelve a leer del servidor cada dos minutos */}
       <PresenceAutoRefresh />
-      <Card>
+      <Card className="overflow-visible">
         <FilterBar
           activeCount={activeFilterCount}
           search={<SearchField placeholder="Buscar por RUT, nombre o cargo…" />}

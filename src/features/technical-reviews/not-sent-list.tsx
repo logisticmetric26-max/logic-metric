@@ -23,12 +23,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { formatDateOnly } from "@/lib/format";
@@ -84,7 +78,7 @@ export function NotSentList({
 
   return (
     <>
-      <Card>
+      <Card className="overflow-visible">
         <FilterBar
           activeCount={activeFilterCount}
           search={<SearchField placeholder="Buscar por PPU, número interno, OT o motivo…" />}
@@ -130,48 +124,6 @@ export function NotSentList({
         ) : (
           <>
             <ResponsiveTable
-              table={
-                <Table>
-                  <THead>
-                    <TH>Fecha</TH>
-                    <TH>N.º interno</TH>
-                    <TH>PPU</TH>
-                    <TH>Terminal</TH>
-                    <TH>Motivo</TH>
-                    <TH>N.º OT</TH>
-                    <TH>Registró</TH>
-                    <TH align="right">Acciones</TH>
-                  </THead>
-                  <TBody>
-                    {records.map((record) => (
-                      <TR key={record.id}>
-                        <TD className="whitespace-nowrap">{formatDateOnly(record.event_date)}</TD>
-                        <TD className="font-medium">{record.internal_number}</TD>
-                        <TD className="font-mono text-xs">{record.ppu}</TD>
-                        <TD className="text-ink-secondary">{record.terminal_name}</TD>
-                        <TD className="max-w-xs">
-                          <span className="line-clamp-2 text-ink-secondary">{record.reason}</span>
-                        </TD>
-                        <TD>
-                          {record.work_order_number ? (
-                            <Badge tone="neutral">{record.work_order_number}</Badge>
-                          ) : (
-                            <span className="text-ink-subtle">—</span>
-                          )}
-                        </TD>
-                        <TD className="text-ink-muted">{record.created_by_name ?? "—"}</TD>
-                        <TD align="right">
-                          <RowMenu
-                            can={can}
-                            onEdit={() => setEditing(record)}
-                            onDelete={() => setDeleting(record)}
-                          />
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              }
               cards={
                 <CardList>
                   {records.map((record) => (

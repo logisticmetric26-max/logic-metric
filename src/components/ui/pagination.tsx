@@ -42,7 +42,7 @@ export function Pagination({
   if (total === 0) return null;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border bg-surface-subtle/50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-surface-subtle/50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <p className="text-xs text-ink-muted">
         Mostrando <span className="font-medium text-ink-secondary">{formatNumber(from)}</span>–
         <span className="font-medium text-ink-secondary">{formatNumber(to)}</span> de{" "}

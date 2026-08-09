@@ -23,12 +23,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
@@ -132,58 +126,6 @@ export default async function RechazadosPage({
       ) : (
         <>
           <ResponsiveTable
-            table={
-              <Table>
-                <THead>
-                  <TH>N. interno</TH>
-                  <TH>PPU</TH>
-                  <TH>Terminal</TH>
-                  <TH>Regreso</TH>
-                  <TH>N. guia</TH>
-                  <TH align="center">Motivos</TH>
-                  <TH>Analisis</TH>
-                  <TH>Abrio</TH>
-                  <TH>Cerro</TH>
-                  <TH align="right">Accion</TH>
-                </THead>
-                <TBody>
-                  {events.map((event) => (
-                    <TR key={event.id}>
-                      <TD className="font-medium">{event.internal_number}</TD>
-                      <TD className="font-mono text-xs">{event.ppu}</TD>
-                      <TD className="text-ink-secondary">{event.terminal_name}</TD>
-                      <TD className="whitespace-nowrap text-ink-secondary">
-                        {formatDateTime(event.return_at)}
-                      </TD>
-                      <TD>
-                        <Badge tone="neutral">{event.guide_number ?? "-"}</Badge>
-                      </TD>
-                      <TD align="center">
-                        <span className="tabular-nums">{event.rejection_count}</span>
-                        {event.needs_review_count > 0 && (
-                          <span className="ml-1.5 text-xs text-warning-700">
-                            ({event.needs_review_count} por revisar)
-                          </span>
-                        )}
-                      </TD>
-                      <TD>
-                        <AnalysisStatusBadge status={event.analysis_status} />
-                      </TD>
-                      <TD className="text-ink-muted">{event.created_by_name ?? "-"}</TD>
-                      <TD className="text-ink-muted">{event.closed_by_name ?? "-"}</TD>
-                      <TD align="right">
-                        <Link
-                          href={`/revision-tecnica/detalle/${event.id}`}
-                          className="text-sm font-medium text-brand-700 hover:text-brand-800"
-                        >
-                          Ver detalle
-                        </Link>
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-            }
             cards={
               <CardList>
                 {events.map((event) => (

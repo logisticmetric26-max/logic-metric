@@ -85,7 +85,7 @@ export function TerminalsManager({ terminals, canCreate, canEdit, canDelete }: P
 
   return (
     <>
-      <Card>
+      <Card className="overflow-visible">
         <FilterBar
           search={<SearchField placeholder="Buscar terminal…" />}
           actions={
@@ -130,18 +130,14 @@ export function TerminalsManager({ terminals, canCreate, canEdit, canDelete }: P
                     icon={<Building2 className="size-[19px]" aria-hidden />}
                     tone={terminal.active ? "success" : "neutral"}
                     title={terminal.name}
-                    subtitle={
-                      terminal.code ? (
-                        <span className="flex items-center gap-1.5">
-                          <Hash className="size-3.5" aria-hidden />
-                          Código {terminal.code}
-                        </span>
-                      ) : (
-                        "Sin código"
-                      )
-                    }
+                    subtitle="Terminal de operación"
                     badge={<ActiveBadge active={terminal.active} />}
                     fields={[
+                      {
+                        label: "Código",
+                        value: terminal.code ?? "Sin código",
+                        icon: <Hash className="size-3" aria-hidden />,
+                      },
                       {
                         label: "Fecha de creación",
                         value: formatDate(terminal.created_at),

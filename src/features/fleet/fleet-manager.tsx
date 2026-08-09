@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox, Field, Input, Select } from "@/components/ui/field";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
-import { ActiveBadge, Badge } from "@/components/ui/badge";
+import { ActiveBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/feedback";
 import { FilterBar, FilterSelect, SearchField } from "@/components/ui/filters";
 import { Pagination } from "@/components/ui/pagination";
@@ -71,7 +71,7 @@ export function FleetManager({
 
   return (
     <>
-      <Card>
+      <Card className="overflow-visible">
         <FilterBar
           activeCount={activeFilterCount}
           search={<SearchField placeholder="Buscar por PPU o número interno…" />}

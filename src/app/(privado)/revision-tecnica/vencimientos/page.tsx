@@ -12,12 +12,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { ExpiringSoonSetting } from "@/features/technical-reviews/expiring-soon-setting";
 import { formatDateOnly } from "@/lib/format";
@@ -151,47 +145,6 @@ export default async function VencimientosPage({
         ) : (
           <>
             <ResponsiveTable
-              table={
-                <Table>
-                  <THead>
-                    <TH>N.º interno</TH>
-                    <TH>PPU</TH>
-                    <TH>Terminal</TH>
-                    <TH>Vencimiento</TH>
-                    <TH align="center">Días</TH>
-                    <TH>Última aprobación</TH>
-                    <TH>Estado</TH>
-                  </THead>
-                  <TBody>
-                    {rows.map((row) => (
-                      <TR key={row.fleet_id}>
-                        <TD className="font-medium">{row.internal_number}</TD>
-                        <TD className="font-mono text-xs">{row.ppu}</TD>
-                        <TD className="text-ink-secondary">
-                          {context.terminals.find((terminal) => terminal.id === row.terminal_id)
-                            ?.name ?? "—"}
-                        </TD>
-                        <TD className="whitespace-nowrap">
-                          {formatDateOnly(row.expiration_date)}
-                        </TD>
-                        <TD align="center" className="tabular-nums">
-                          {row.days_to_expiration === null
-                            ? "—"
-                            : row.days_to_expiration < 0
-                              ? `${Math.abs(row.days_to_expiration)} vencido`
-                              : row.days_to_expiration}
-                        </TD>
-                        <TD className="whitespace-nowrap text-ink-muted">
-                          {formatDateOnly(row.last_approved_at?.slice(0, 10) ?? null)}
-                        </TD>
-                        <TD>
-                          <ExpirationBadge status={row.expiration_status} />
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              }
               cards={
                 <CardList>
                   {rows.map((row) => (
