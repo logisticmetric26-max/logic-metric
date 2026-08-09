@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Building2, MoreVertical, Pencil, Plus, Power } from "lucide-react";
+import { Building2, MoreVertical, Pencil, Plus, Power, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Checkbox } from "@/components/ui/field";
@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/format";
 import {
   createTerminalAction,
+  deleteTerminalAction,
   setTerminalActiveAction,
   updateTerminalAction,
 } from "@/features/terminals/actions";
@@ -33,14 +34,16 @@ interface Props {
   terminals: TerminalRow[];
   canCreate: boolean;
   canEdit: boolean;
+  canDelete: boolean;
 }
 
 /** §15 · Administración de terminales: crear, editar, activar y desactivar. */
-export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
+export function TerminalsManager({ terminals, canCreate, canEdit, canDelete }: Props) {
   const toast = useToast();
   const [editing, setEditing] = useState<TerminalRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [toggling, setToggling] = useState<TerminalRow | null>(null);
+  const [deleting, setDeleting] = useState<TerminalRow | null>(null);
   const [pending, startTransition] = useTransition();
 
   function confirmToggle() {
@@ -57,6 +60,23 @@ export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
 
       toast.success(target.active ? "Terminal desactivado." : "Terminal activado.");
       setToggling(null);
+    });
+  }
+
+  function confirmDelete() {
+    if (!deleting) return;
+    const target = deleting;
+
+    startTransition(async () => {
+      const result = await deleteTerminalAction(target.id);
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Terminal eliminado.");
+      setDeleting(null);
     });
   }
 
@@ -118,24 +138,38 @@ export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
                       </TD>
                       <TD className="text-ink-muted">{formatDate(terminal.created_at)}</TD>
                       <TD align="right">
-                        {canEdit && (
+                        {(canEdit || canDelete) && (
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditing(terminal)}
-                              icon={<Pencil className="size-4" aria-hidden />}
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setToggling(terminal)}
-                              icon={<Power className="size-4" aria-hidden />}
-                            >
-                              {terminal.active ? "Desactivar" : "Activar"}
-                            </Button>
+                            {canEdit && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditing(terminal)}
+                                  icon={<Pencil className="size-4" aria-hidden />}
+                                >
+                                  Editar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setToggling(terminal)}
+                                  icon={<Power className="size-4" aria-hidden />}
+                                >
+                                  {terminal.active ? "Desactivar" : "Activar"}
+                                </Button>
+                              </>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleting(terminal)}
+                                icon={<Trash2 className="size-4" aria-hidden />}
+                              >
+                                Eliminar
+                              </Button>
+                            )}
                           </div>
                         )}
                       </TD>
@@ -154,10 +188,11 @@ export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
                     badge={<ActiveBadge active={terminal.active} />}
                     fields={[{ label: "Creado", value: formatDate(terminal.created_at) }]}
                     actions={
-                      canEdit ? (
+                      canEdit || canDelete ? (
                         <TerminalRowMenu
-                          onEdit={() => setEditing(terminal)}
-                          onToggle={() => setToggling(terminal)}
+                          onEdit={canEdit ? () => setEditing(terminal) : undefined}
+                          onToggle={canEdit ? () => setToggling(terminal) : undefined}
+                          onDelete={canDelete ? () => setDeleting(terminal) : undefined}
                           active={terminal.active}
                         />
                       ) : undefined
@@ -220,6 +255,22 @@ export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
           )
         }
       />
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+        loading={pending}
+        tone="danger"
+        title="Eliminar terminal"
+        confirmLabel="Eliminar"
+        message={
+          <p>
+            El terminal <strong>{deleting?.name}</strong> se eliminará de forma definitiva. Si
+            tiene buses, revisiones o usuarios asociados, la operación será rechazada.
+          </p>
+        }
+      />
     </>
   );
 }
@@ -228,10 +279,12 @@ export function TerminalsManager({ terminals, canCreate, canEdit }: Props) {
 function TerminalRowMenu({
   onEdit,
   onToggle,
+  onDelete,
   active,
 }: {
-  onEdit: () => void;
-  onToggle: () => void;
+  onEdit?: () => void;
+  onToggle?: () => void;
+  onDelete?: () => void;
   active: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -251,28 +304,45 @@ function TerminalRowMenu({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-border bg-surface p-1 shadow-[var(--shadow-raised)]">
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onEdit();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-surface-muted"
-            >
-              <Pencil className="size-4" aria-hidden />
-              Editar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onToggle();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-surface-muted"
-            >
-              <Power className="size-4" aria-hidden />
-              {active ? "Desactivar" : "Activar"}
-            </button>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onEdit();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-surface-muted"
+              >
+                <Pencil className="size-4" aria-hidden />
+                Editar
+              </button>
+            )}
+            {onToggle && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onToggle();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-surface-muted"
+              >
+                <Power className="size-4" aria-hidden />
+                {active ? "Desactivar" : "Activar"}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-danger-700 hover:bg-danger-50"
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Eliminar
+              </button>
+            )}
           </div>
         </>
       )}

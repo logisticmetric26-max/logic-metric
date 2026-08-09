@@ -44,6 +44,7 @@ export default async function TerminalesPage({
       terminals={data ?? []}
       canCreate={context.permissions.includes(PERMISSIONS.terminals.create)}
       canEdit={context.permissions.includes(PERMISSIONS.terminals.edit)}
+      canDelete={context.permissions.includes(PERMISSIONS.terminals.delete)}
     />
   );
 }

@@ -52,7 +52,10 @@ export default async function RechazadosPage({
 
   let query = supabase
     .from("technical_review_events_view")
-    .select("*", { count: "exact" })
+    .select(
+      "id, internal_number, ppu, terminal_name, return_at, guide_number, rejection_count, needs_review_count, analysis_status",
+      { count: "planned" },
+    )
     .eq("status", "CLOSED")
     .eq("result", "REJECTED")
     .order("return_at", { ascending: false })

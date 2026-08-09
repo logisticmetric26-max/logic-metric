@@ -35,7 +35,10 @@ export default async function EnRevisionPage({
 
   let query = supabase
     .from("technical_review_events_view")
-    .select("*", { count: "exact" })
+    .select(
+      "id, internal_number, ppu, driver_name, terminal_name, departure_at, created_by_name",
+      { count: "planned" },
+    )
     .eq("status", "OPEN")
     .order("departure_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);

@@ -40,6 +40,11 @@ interface AnalysisResponse {
   document_number: string | null;
 }
 
+export type CloseReviewEvent = Pick<
+  TechnicalReviewEventViewRow,
+  "id" | "internal_number" | "ppu" | "departure_at"
+>;
+
 /**
  * §21-§26 · Cierre de la revisión.
  *
@@ -55,7 +60,7 @@ export function CloseReviewModal({
   open,
   onClose,
 }: {
-  event: TechnicalReviewEventViewRow;
+  event: CloseReviewEvent;
   open: boolean;
   onClose: () => void;
 }) {

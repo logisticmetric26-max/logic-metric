@@ -58,7 +58,10 @@ export default async function HistorialPage({
 
   let query = supabase
     .from("technical_review_events_view")
-    .select("*", { count: "exact" })
+    .select(
+      "id, internal_number, ppu, terminal_name, departure_at, return_at, status, result, guide_number, expiration_date",
+      { count: "planned" },
+    )
     .eq("status", "CLOSED")
     .order("return_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);

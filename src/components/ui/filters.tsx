@@ -32,7 +32,7 @@ function useUrlState() {
     params.delete("pagina");
 
     const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    router.replace(query ? `${pathname}?${query}` : pathname);
   }
 
   return { searchParams, setParams, pathname, router };
@@ -211,7 +211,7 @@ export function FilterBar({
             variant="ghost"
             size="sm"
             className="hidden lg:inline-flex"
-            onClick={() => router.push(pathname)}
+            onClick={() => router.replace(pathname)}
           >
             Limpiar filtros
           </Button>
@@ -230,7 +230,7 @@ export function FilterBar({
               variant="secondary"
               fullWidth
               onClick={() => {
-                router.push(pathname);
+                router.replace(pathname);
                 setOpen(false);
               }}
             >

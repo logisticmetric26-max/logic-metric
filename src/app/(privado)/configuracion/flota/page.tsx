@@ -40,7 +40,7 @@ export default async function FlotaPage({
 
   let query = supabase
     .from("fleet_view")
-    .select("*", { count: "exact" })
+    .select("*", { count: "planned" })
     .order("internal_number")
     .range(from, from + PAGE_SIZE - 1);
 

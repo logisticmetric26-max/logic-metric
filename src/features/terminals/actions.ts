@@ -120,3 +120,67 @@ export async function setTerminalActiveAction(
   revalidatePath("/configuracion/terminales");
   return actionSuccess();
 }
+
+export async function deleteTerminalAction(id: string): Promise<ActionResult> {
+  const context = await requireActiveUser();
+
+  if (!context.permissions.includes(PERMISSIONS.terminals.delete)) {
+    return actionError("No tiene permisos para eliminar terminales.");
+  }
+
+  const supabase = await createClient();
+
+  const [
+    { count: fleetCount, error: fleetError },
+    { count: profilesCount, error: profilesError },
+    { count: reviewsCount, error: reviewsError },
+    { count: notSentCount, error: notSentError },
+  ] = await Promise.all([
+    supabase.from("fleet").select("id", { count: "exact", head: true }).eq("terminal_id", id),
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("primary_terminal_id", id),
+    supabase
+      .from("technical_review_events")
+      .select("id", { count: "exact", head: true })
+      .eq("terminal_id", id),
+    supabase
+      .from("technical_review_not_sent")
+      .select("id", { count: "exact", head: true })
+      .eq("terminal_id", id),
+  ]);
+
+  if (fleetError) return actionError(reportError("deleteTerminalFleetCheck", fleetError));
+  if (profilesError) return actionError(reportError("deleteTerminalProfilesCheck", profilesError));
+  if (reviewsError) return actionError(reportError("deleteTerminalReviewsCheck", reviewsError));
+  if (notSentError) return actionError(reportError("deleteTerminalNotSentCheck", notSentError));
+
+  if ((fleetCount ?? 0) > 0) {
+    return actionError("No se puede eliminar el terminal porque tiene buses asociados.");
+  }
+
+  if ((profilesCount ?? 0) > 0) {
+    return actionError(
+      "No se puede eliminar el terminal porque tiene usuarios con terminal principal asignado.",
+    );
+  }
+
+  if ((reviewsCount ?? 0) > 0) {
+    return actionError("No se puede eliminar el terminal porque tiene revisiones técnicas asociadas.");
+  }
+
+  if ((notSentCount ?? 0) > 0) {
+    return actionError(
+      "No se puede eliminar el terminal porque tiene registros de no enviados asociados.",
+    );
+  }
+
+  const { error } = await supabase.from("terminals").delete().eq("id", id);
+
+  if (error) return actionError(reportError("deleteTerminal", error));
+
+  revalidatePath("/configuracion/terminales");
+  revalidatePath("/configuracion/flota");
+  return actionSuccess();
+}

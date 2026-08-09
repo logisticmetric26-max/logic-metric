@@ -20,9 +20,11 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { ElapsedTime } from "@/features/technical-reviews/elapsed-time";
-import { CloseReviewModal } from "@/features/technical-reviews/close-review-modal";
+import {
+  CloseReviewModal,
+  type CloseReviewEvent,
+} from "@/features/technical-reviews/close-review-modal";
 import { RegisterDepartureModal } from "@/features/technical-reviews/register-departure-modal";
-import type { TechnicalReviewEventViewRow } from "@/types/database.types";
 
 /**
  * §20 · Procesos actualmente abiertos.
@@ -40,7 +42,11 @@ export function OpenReviews({
   canClose,
   activeFilterCount,
 }: {
-  events: TechnicalReviewEventViewRow[];
+  events: (CloseReviewEvent & {
+    driver_name: string;
+    terminal_name: string;
+    created_by_name: string | null;
+  })[];
   total: number;
   page: number;
   pageSize: number;
@@ -49,7 +55,7 @@ export function OpenReviews({
   canClose: boolean;
   activeFilterCount: number;
 }) {
-  const [closing, setClosing] = useState<TechnicalReviewEventViewRow | null>(null);
+  const [closing, setClosing] = useState<CloseReviewEvent | null>(null);
   const [registering, setRegistering] = useState(false);
 
   return (

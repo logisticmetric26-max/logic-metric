@@ -60,7 +60,10 @@ export default async function VencimientosPage({
 
   let query = supabase
     .from("fleet_expiration_status")
-    .select("*", { count: "exact" })
+    .select(
+      "fleet_id, internal_number, ppu, terminal_id, expiration_date, days_to_expiration, last_approved_at, expiration_status",
+      { count: "planned" },
+    )
     .eq("active", true)
     // Primero lo que urge: sin fecha al final
     .order("expiration_date", { ascending: true, nullsFirst: false })

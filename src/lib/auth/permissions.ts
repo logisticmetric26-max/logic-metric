@@ -35,6 +35,7 @@ export const PERMISSIONS = {
     view: "terminals.view",
     create: "terminals.create",
     edit: "terminals.edit",
+    delete: "terminals.delete",
   },
   users: {
     view: "users.view",
