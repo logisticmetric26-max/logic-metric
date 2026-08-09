@@ -276,6 +276,63 @@ end;
 $$;
 
 -- =============================================================================
+-- Historial · eliminar el evento retira documentos, análisis y rechazos
+-- =============================================================================
+do $$
+declare
+  v_term      uuid := tests.create_terminal('Terminal Eliminación Historial');
+  v_role      uuid := tests.create_role_with_all_permissions('Admin Eliminación Historial');
+  v_user      uuid := tests.create_user(tests.next_rut(), 'Admin Eliminación', v_term, v_role, true);
+  v_bus       uuid := tests.create_bus('D001', 'DDDD01', v_term);
+  v_event     uuid;
+  v_document  uuid;
+  v_analysis  uuid;
+  v_count     bigint;
+begin
+  perform tests.authenticate_as(v_user);
+
+  v_event := public.open_technical_review(v_bus, 'Conductor Eliminación');
+  v_document := tests.attach_document(v_event, 'REJECTION_REPORT');
+
+  insert into public.technical_review_analyses (
+    technical_review_event_id, document_id, status, extraction_method, extracted_text
+  )
+  values (v_event, v_document, 'COMPLETED', 'OCR', 'Texto detectado en el PDF')
+  returning id into v_analysis;
+
+  insert into public.technical_review_rejections (
+    technical_review_event_id, document_id, analysis_id, sequence, description,
+    detection_source, origin, confirmed_by, confirmed_at
+  )
+  values (
+    v_event, v_document, v_analysis, 1, 'Rechazo detectado por el sistema',
+    'OCR', 'AUTOMATIC', v_user, now()
+  );
+
+  perform public.close_technical_review(v_event, 'REJECTED', 'GUIA-DEL-1');
+  delete from public.technical_review_events where id = v_event;
+
+  -- Se consulta como owner para que RLS no pueda ocultar filas huérfanas.
+  perform tests.become_owner();
+
+  select count(*) into v_count from public.technical_review_events where id = v_event;
+  perform tests.assert_equals(v_count, 0::bigint, 'El evento histórico queda eliminado');
+
+  select count(*) into v_count from public.technical_review_documents
+  where technical_review_event_id = v_event;
+  perform tests.assert_equals(v_count, 0::bigint, 'La metadata del PDF se elimina en cascada');
+
+  select count(*) into v_count from public.technical_review_analyses
+  where technical_review_event_id = v_event;
+  perform tests.assert_equals(v_count, 0::bigint, 'El análisis OCR se elimina en cascada');
+
+  select count(*) into v_count from public.technical_review_rejections
+  where technical_review_event_id = v_event;
+  perform tests.assert_equals(v_count, 0::bigint, 'Los rechazos detectados se eliminan en cascada');
+end;
+$$;
+
+-- =============================================================================
 -- §38 · Clasificación de vencimientos con umbral configurable
 -- =============================================================================
 do $$
