@@ -36,7 +36,6 @@ interface SearchParams {
   pagina?: string;
 }
 
-/** §36 · Revisiones cerradas con resultado RECHAZADO. */
 export default async function RechazadosPage({
   searchParams,
 }: {
@@ -53,7 +52,7 @@ export default async function RechazadosPage({
   let query = supabase
     .from("technical_review_events_view")
     .select(
-      "id, internal_number, ppu, terminal_name, return_at, guide_number, rejection_count, needs_review_count, analysis_status",
+      "id, internal_number, ppu, terminal_name, return_at, guide_number, rejection_count, needs_review_count, analysis_status, created_by_name, closed_by_name",
       { count: "planned" },
     )
     .eq("status", "CLOSED")
@@ -90,7 +89,7 @@ export default async function RechazadosPage({
     <Card>
       <FilterBar
         activeCount={activeFilterCount}
-        search={<SearchField placeholder="Buscar por PPU, número interno o guía…" />}
+        search={<SearchField placeholder="Buscar por PPU, numero interno o guia..." />}
       >
         {context.terminals.length > 1 && (
           <FilterSelect
@@ -111,13 +110,13 @@ export default async function RechazadosPage({
           icon={<FileX2 className="size-5" aria-hidden />}
           title={
             activeFilterCount > 0
-              ? "Ninguna revisión rechazada coincide con los filtros"
+              ? "Ninguna revision rechazada coincide con los filtros"
               : "No hay revisiones rechazadas"
           }
           description={
             activeFilterCount > 0
-              ? "Modifique la búsqueda o limpie los filtros aplicados."
-              : "Las revisiones cerradas con resultado rechazado aparecerán aquí."
+              ? "Modifique la busqueda o limpie los filtros aplicados."
+              : "Las revisiones cerradas con resultado rechazado apareceran aqui."
           }
         />
       ) : (
@@ -126,14 +125,16 @@ export default async function RechazadosPage({
             table={
               <Table>
                 <THead>
-                  <TH>N.º interno</TH>
+                  <TH>N. interno</TH>
                   <TH>PPU</TH>
                   <TH>Terminal</TH>
                   <TH>Regreso</TH>
-                  <TH>N.º guía</TH>
+                  <TH>N. guia</TH>
                   <TH align="center">Motivos</TH>
-                  <TH>Análisis</TH>
-                  <TH align="right">Acción</TH>
+                  <TH>Analisis</TH>
+                  <TH>Abrio</TH>
+                  <TH>Cerro</TH>
+                  <TH align="right">Accion</TH>
                 </THead>
                 <TBody>
                   {events.map((event) => (
@@ -145,7 +146,7 @@ export default async function RechazadosPage({
                         {formatDateTime(event.return_at)}
                       </TD>
                       <TD>
-                        <Badge tone="neutral">{event.guide_number ?? "—"}</Badge>
+                        <Badge tone="neutral">{event.guide_number ?? "-"}</Badge>
                       </TD>
                       <TD align="center">
                         <span className="tabular-nums">{event.rejection_count}</span>
@@ -158,6 +159,8 @@ export default async function RechazadosPage({
                       <TD>
                         <AnalysisStatusBadge status={event.analysis_status} />
                       </TD>
+                      <TD className="text-ink-muted">{event.created_by_name ?? "-"}</TD>
+                      <TD className="text-ink-muted">{event.closed_by_name ?? "-"}</TD>
                       <TD align="right">
                         <Link
                           href={`/revision-tecnica/detalle/${event.id}`}
@@ -180,7 +183,7 @@ export default async function RechazadosPage({
                       subtitle={`${event.terminal_name} · ${formatDateTime(event.return_at)}`}
                       badge={<AnalysisStatusBadge status={event.analysis_status} />}
                       fields={[
-                        { label: "N.º guía", value: event.guide_number ?? "—" },
+                        { label: "N. guia", value: event.guide_number ?? "-" },
                         {
                           label: "Motivos",
                           value:
@@ -188,6 +191,8 @@ export default async function RechazadosPage({
                               ? `${event.rejection_count} (${event.needs_review_count} por revisar)`
                               : event.rejection_count,
                         },
+                        { label: "Abrio", value: event.created_by_name ?? "-" },
+                        { label: "Cerro", value: event.closed_by_name ?? "-" },
                       ]}
                     />
                   </Link>

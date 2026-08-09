@@ -163,7 +163,7 @@ export async function GET(request: Request) {
     let closedQuery = supabase
       .from("technical_review_events_view")
       .select(
-        "internal_number, ppu, terminal_name, driver_name, departure_at, return_at, result, guide_number, expiration_date, closed_by_name, rejection_count",
+        "internal_number, ppu, terminal_name, driver_name, departure_at, return_at, result, guide_number, expiration_date, created_by_name, closed_by_name, rejection_count",
       )
       .eq("status", "CLOSED")
       .order("return_at", { ascending: false })

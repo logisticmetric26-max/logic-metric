@@ -37,12 +37,6 @@ interface SearchParams {
   pagina?: string;
 }
 
-/**
- * §40 · Historial completo de procesos cerrados.
- *
- * Cada ida a planta permanece como un evento individual: la base impide
- * modificar un evento cerrado, así que el historial nunca se reescribe.
- */
 export default async function HistorialPage({
   searchParams,
 }: {
@@ -59,14 +53,13 @@ export default async function HistorialPage({
   let query = supabase
     .from("technical_review_events_view")
     .select(
-      "id, internal_number, ppu, terminal_name, departure_at, return_at, status, result, guide_number, expiration_date",
+      "id, internal_number, ppu, terminal_name, departure_at, return_at, status, result, guide_number, expiration_date, created_by_name, closed_by_name",
       { count: "planned" },
     )
     .eq("status", "CLOSED")
     .order("return_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
-  // §65 · búsqueda por PPU, número interno, guía y conductor
   if (params.q?.trim()) {
     const raw = params.q.trim();
     const ppuPattern = `%${escapeLikePattern(raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}%`;
@@ -104,7 +97,7 @@ export default async function HistorialPage({
     <Card>
       <FilterBar
         activeCount={activeFilterCount}
-        search={<SearchField placeholder="Buscar por PPU, número interno, guía o conductor…" />}
+        search={<SearchField placeholder="Buscar por PPU, numero interno, guia o conductor..." />}
       >
         {context.terminals.length > 1 && (
           <FilterSelect
@@ -133,13 +126,13 @@ export default async function HistorialPage({
           icon={<History className="size-5" aria-hidden />}
           title={
             activeFilterCount > 0
-              ? "Ningún proceso coincide con los filtros"
-              : "El historial está vacío"
+              ? "Ningun proceso coincide con los filtros"
+              : "El historial esta vacio"
           }
           description={
             activeFilterCount > 0
-              ? "Modifique la búsqueda o limpie los filtros aplicados."
-              : "Los procesos cerrados aparecerán aquí como eventos históricos individuales."
+              ? "Modifique la busqueda o limpie los filtros aplicados."
+              : "Los procesos cerrados apareceran aqui como eventos historicos individuales."
           }
         />
       ) : (
@@ -148,15 +141,17 @@ export default async function HistorialPage({
             table={
               <Table>
                 <THead>
-                  <TH>N.º interno</TH>
+                  <TH>N. interno</TH>
                   <TH>PPU</TH>
                   <TH>Terminal</TH>
                   <TH>Salida</TH>
                   <TH>Regreso</TH>
                   <TH>Resultado</TH>
-                  <TH>N.º guía</TH>
+                  <TH>N. guia</TH>
                   <TH>Vencimiento</TH>
-                  <TH align="right">Acción</TH>
+                  <TH>Abrio</TH>
+                  <TH>Cerro</TH>
+                  <TH align="right">Accion</TH>
                 </THead>
                 <TBody>
                   {events.map((event) => (
@@ -173,12 +168,14 @@ export default async function HistorialPage({
                       <TD>
                         <ReviewStatusBadge status={event.status} result={event.result} />
                       </TD>
-                      <TD className="text-ink-secondary">{event.guide_number ?? "—"}</TD>
+                      <TD className="text-ink-secondary">{event.guide_number ?? "-"}</TD>
                       <TD className="whitespace-nowrap text-ink-secondary">
                         {event.result === "APPROVED"
                           ? formatDateOnly(event.expiration_date)
                           : "Sin cambio"}
                       </TD>
+                      <TD className="text-ink-muted">{event.created_by_name ?? "-"}</TD>
+                      <TD className="text-ink-muted">{event.closed_by_name ?? "-"}</TD>
                       <TD align="right">
                         <Link
                           href={`/revision-tecnica/detalle/${event.id}`}
@@ -201,7 +198,7 @@ export default async function HistorialPage({
                       subtitle={`${event.terminal_name} · ${formatDateTime(event.return_at)}`}
                       badge={<ReviewStatusBadge status={event.status} result={event.result} />}
                       fields={[
-                        { label: "N.º guía", value: event.guide_number ?? "—" },
+                        { label: "N. guia", value: event.guide_number ?? "-" },
                         {
                           label: "Vencimiento",
                           value:
@@ -209,6 +206,8 @@ export default async function HistorialPage({
                               ? formatDateOnly(event.expiration_date)
                               : "Sin cambio",
                         },
+                        { label: "Abrio", value: event.created_by_name ?? "-" },
+                        { label: "Cerro", value: event.closed_by_name ?? "-" },
                       ]}
                     />
                   </Link>
