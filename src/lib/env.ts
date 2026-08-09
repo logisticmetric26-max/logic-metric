@@ -69,7 +69,11 @@ export function getPublicEnv() {
  * los módulos que la usan garantiza el aislamiento en tiempo de compilación.
  */
 export function getServiceRoleKey(): string {
-  return required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
+  // `trim()`: pegar la clave en el panel del proveedor arrastra con frecuencia
+  // un salto de línea o un espacio final. La cabecera resultante es inválida y
+  // Supabase responde 401 igual que si la clave fuera de otro proyecto, lo que
+  // convierte un error de copiado en una búsqueda a ciegas.
+  return required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY).trim();
 }
 
 /**

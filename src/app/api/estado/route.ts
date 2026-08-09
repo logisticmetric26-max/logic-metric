@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeSupabaseUrl } from "@/lib/env";
+import { claimedRole } from "@/lib/supabase/key-role";
 
 /**
  * Diagnóstico de despliegue.
@@ -54,7 +55,8 @@ export async function GET() {
   // esté definida no significa que sea la correcta: una clave equivocada deja
   // el inicio de sesión funcionando y rompe sólo el alta de usuarios, que es
   // justo el síntoma más difícil de atribuir.
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+  const serviceKeyRaw = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const serviceKey = serviceKeyRaw.trim();
   let serviceRoleValida: boolean | null = null;
 
   if (urlUtilizable && serviceKey.length > 0) {
@@ -80,6 +82,13 @@ export async function GET() {
       supabase_service_role_definida: isSet(process.env.SUPABASE_SERVICE_ROLE_KEY),
       // Sin esta en `true` no se pueden dar de alta usuarios.
       supabase_service_role_valida: serviceRoleValida,
+      // Cuando la anterior es `false`, estas tres dicen por qué:
+      //   rol "anon"        → se pegó la clave equivocada
+      //   igual_a_anon      → lo mismo, comprobado por comparación directa
+      //   con_espacios      → se pegó con un salto de línea o un espacio
+      supabase_service_role_rol: serviceKey.length > 0 ? claimedRole(serviceKey) : null,
+      supabase_service_role_igual_a_anon: serviceKey.length > 0 && serviceKey === anonKey,
+      supabase_service_role_con_espacios: serviceKeyRaw !== serviceKey,
       dominio_identificador: process.env.AUTH_EMAIL_DOMAIN?.trim() || "usuarios.interno",
       supabase_alcanzable: supabaseAlcanzable,
     },
