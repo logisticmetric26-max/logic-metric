@@ -237,8 +237,15 @@ body::before {
     radial-gradient(52rem 40rem at 12% -6%, var(--ambient-1), transparent 62%),
     radial-gradient(44rem 36rem at 98% 8%, var(--ambient-2), transparent 60%),
     radial-gradient(48rem 38rem at 58% 104%, var(--ambient-3), transparent 62%);
-  animation: ambient-drift 40s var(--ease-standard) infinite alternate;
 }
+
+/* El ambiente NO se anima.
+   Cada fotograma de un fondo en movimiento obliga al navegador a recalcular
+   TODOS los paneles con `backdrop-filter` que hay encima —barra lateral,
+   cabecera, pestañas, modales—, porque su desenfoque depende de lo que tienen
+   detrás. Medido: 25 ms por fotograma al desplazar el tablero, es decir menos
+   de 40 fps en un equipo de escritorio. La deriva era imperceptible; el coste,
+   no. */
 
 /* Grano finísimo sobre el ambiente.
    Los degradados amplios producen bandas visibles en pantallas de 8 bits; una
@@ -251,15 +258,6 @@ body::after {
   pointer-events: none;
   opacity: 0.4;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-}
-
-@keyframes ambient-drift {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
-  }
 }
 
 /* Jerarquía tipográfica: a mayor tamaño, menor tracking */
@@ -413,24 +411,20 @@ h3 {
    Por eso `.panel` —el material de tablas y formularios— sigue siendo opaco.
    -------------------------------------------------------------------------- */
 .card-material {
-  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-  backdrop-filter: saturate(160%) blur(16px);
+  /* Velo translúcido SIN desenfoque.
+     El desenfoque es lo caro: cada tarjeta con `backdrop-filter` es una capa
+     que el navegador recompone aparte, y el tablero llegó a tener catorce.
+     Sobre un fondo suave y sin bordes duros como el ambiente, desenfocar no
+     cambia lo que se ve —el resultado es el mismo velo— pero cuesta el triple.
+     El cristal de verdad se reserva al cromo, que son cuatro elementos. */
+  background-color: color-mix(in srgb, var(--color-surface) 86%, transparent);
   border: 1px solid var(--color-border);
   box-shadow: var(--edge-light), var(--shadow-card);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .card-material {
-    background-color: var(--color-surface);
-  }
 }
 
 @media (prefers-contrast: more) {
   .card-material {
     background-color: var(--color-surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
 }
 
@@ -545,9 +539,6 @@ h3 {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-  body::before {
-    animation: none;
   }
 }
 

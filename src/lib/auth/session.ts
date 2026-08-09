@@ -21,23 +21,32 @@ export type SessionState =
 export const getSessionState = cache(async (): Promise<SessionState> => {
   const supabase = await createClient();
 
-  // getUser() valida el token contra el servidor de Auth. getSession() sólo lee
-  // la cookie, que es manipulable; por eso no se usa aquí.
+  // Se pregunta PRIMERO por el contexto, no por el usuario.
+  //
+  // `getUser()` viaja al servidor de Auth para validar el token: unos 200 ms en
+  // el camino crítico de CADA página. Esta llamada no lo necesita, porque
+  // PostgREST verifica la firma del JWT antes de ejecutar nada y `auth.uid()`
+  // sale de las credenciales ya validadas — no de la cookie, que sí sería
+  // manipulable. Un token con firma correcta pero de un usuario eliminado
+  // devuelve contexto vacío y cae en el camino de abajo.
+  const { data } = await supabase.rpc("current_user_context");
+  const context = data as CurrentUserContext | null;
+
+  if (context?.profile) {
+    if (context.profile.status !== "ACTIVE") return { kind: "SUSPENDED", context };
+    return { kind: "ACTIVE", context };
+  }
+
+  // Camino infrecuente: sin contexto hay que distinguir «nadie ha iniciado
+  // sesión» de «credencial válida sin ficha», y para eso sí hace falta
+  // preguntarle a Auth quién es.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return { kind: "ANONYMOUS" };
 
-  const { data } = await supabase.rpc("current_user_context");
-  const context = data as CurrentUserContext | null;
-
-  // Credencial válida sin ficha de usuario: no puede operar.
-  if (!context?.profile) return { kind: "NO_PROFILE", userId: user.id };
-
-  if (context.profile.status !== "ACTIVE") return { kind: "SUSPENDED", context };
-
-  return { kind: "ACTIVE", context };
+  return { kind: "NO_PROFILE", userId: user.id };
 });
 
 /**

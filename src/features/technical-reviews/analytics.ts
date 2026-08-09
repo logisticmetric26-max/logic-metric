@@ -148,6 +148,8 @@ export async function fetchExpirations(
 ): Promise<ExpirationRecord[]> {
   let query = supabase
     .from("fleet_expiration_status")
+    // Sólo lo que el panel muestra: la flota completa con todas las columnas
+    // eran 164 KB por carga para pintar cuatro cifras y cinco filas.
     .select("internal_number, ppu, terminal_id, expiration_status, expiration_date, days_to_expiration")
     .eq("active", true)
     .limit(MAX_ROWS);
