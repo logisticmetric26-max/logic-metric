@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast";
 import { BusSearch } from "@/features/technical-reviews/bus-search";
 import { openReviewAction } from "@/features/technical-reviews/actions";
+import { hasNameAndSurname } from "@/lib/person-name";
 import type { FleetViewRow } from "@/types/database.types";
 
 /**
@@ -33,9 +34,15 @@ export function RegisterDepartureModal({
 
   const [bus, setBus] = useState<FleetViewRow | null>(null);
   const [driverName, setDriverName] = useState("");
+  // Sin estado inicial ni efecto que lo reponga: mientras nadie toque el campo,
+  // el valor se DERIVA del reloj en cada render. Así la hora que se ve es la de
+  // ahora —no la de cuando se abrió el modal— y no hay que sincronizar nada.
   const [departureAt, setDepartureAt] = useState("");
+  const [departureTouched, setDepartureTouched] = useState(false);
+  const departureValue = departureTouched ? departureAt : nowForInput();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+
 
   function reset() {
     setBus(null);
@@ -51,7 +58,11 @@ export function RegisterDepartureModal({
 
     const errors: Record<string, string> = {};
     if (!bus) errors.fleet_id = "Debe seleccionar el bus.";
-    if (driverName.trim() === "") errors.driver_name = "Debe ingresar el nombre del conductor.";
+    if (driverName.trim() === "") {
+      errors.driver_name = "Debe ingresar el nombre del conductor.";
+    } else if (!hasNameAndSurname(driverName)) {
+      errors.driver_name = "Ingrese el nombre y el apellido del conductor.";
+    }
 
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -60,7 +71,7 @@ export function RegisterDepartureModal({
     formData.set("fleet_id", bus!.id);
     formData.set("driver_name", driverName);
     // Vacío = momento del registro
-    formData.set("departure_at", departureAt ? new Date(departureAt).toISOString() : "");
+    formData.set("departure_at", departureValue ? new Date(departureValue).toISOString() : "");
 
     startTransition(async () => {
       const result = await openReviewAction(formData);
@@ -124,7 +135,8 @@ export function RegisterDepartureModal({
         </Field>
 
         <Field
-          label="Nombre del conductor"
+          label="Conductor"
+          hint="Nombre y apellido, en el mismo campo."
           required
           error={fieldErrors.driver_name}
           htmlFor="driver-name"
@@ -133,8 +145,10 @@ export function RegisterDepartureModal({
             id="driver-name"
             value={driverName}
             onChange={(event) => setDriverName(event.target.value)}
+            placeholder="Juan Pérez"
             maxLength={160}
             autoComplete="off"
+            autoCapitalize="words"
             disabled={pending}
             invalid={Boolean(fieldErrors.driver_name)}
           />
@@ -142,20 +156,42 @@ export function RegisterDepartureModal({
 
         <Field
           label="Fecha y hora de salida"
-          hint="Déjelo vacío para registrar la salida en este momento."
+          hint="Viene puesta la hora actual. Modifíquela sólo si la salida fue antes."
           error={fieldErrors.departure_at}
           htmlFor="departure-at"
         >
           <Input
             id="departure-at"
             type="datetime-local"
-            value={departureAt}
-            onChange={(event) => setDepartureAt(event.target.value)}
+            value={departureValue}
+            onChange={(event) => {
+              setDepartureTouched(true);
+              setDepartureAt(event.target.value);
+            }}
             disabled={pending}
             invalid={Boolean(fieldErrors.departure_at)}
           />
         </Field>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * Momento actual con el formato que espera `datetime-local`: `yyyy-MM-ddTHH:mm`.
+ *
+ * El campo venía vacío y se registraba la hora del servidor al enviar. Funciona,
+ * pero obliga a confiar a ciegas: ahora se ve la hora que va a quedar grabada, y
+ * en el caso normal —registrar la salida en el momento— no hay que escribir
+ * nada. Se construye con las partes locales de la fecha, no con `toISOString`,
+ * que devuelve UTC y mostraría una hora distinta a la del reloj de la pared.
+ */
+function nowForInput(): string {
+  const ahora = new Date();
+  const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
+
+  return (
+    `${ahora.getFullYear()}-${dosDigitos(ahora.getMonth() + 1)}-${dosDigitos(ahora.getDate())}` +
+    `T${dosDigitos(ahora.getHours())}:${dosDigitos(ahora.getMinutes())}`
   );
 }

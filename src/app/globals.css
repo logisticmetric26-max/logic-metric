@@ -272,15 +272,20 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Áreas seguras del iPhone cuando corre como PWA instalada */
-@supports (padding: env(safe-area-inset-bottom)) {
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-}
+/* Áreas seguras del iPhone cuando corre como PWA instalada.
+   -----------------------------------------------------------------------------
+   NO existen como clases sueltas a propósito. Una clase que fije
+   `padding-bottom: env(safe-area-inset-bottom)` ANULA el relleno que el
+   elemento ya tenía, y en escritorio ese valor es 0: los botones del pie de un
+   modal acababan pegados al borde inferior.
+
+   La forma correcta es SUMAR el área segura al relleno propio en el mismo
+   valor, con `calc()`:
+
+       pb-[calc(0.875rem+env(safe-area-inset-bottom))]
+
+   Así el relleno de diseño se respeta siempre y el móvil sólo añade lo suyo.
+   -------------------------------------------------------------------------- */
 
 /* Foco visible y consistente para navegación por teclado */
 :focus-visible {

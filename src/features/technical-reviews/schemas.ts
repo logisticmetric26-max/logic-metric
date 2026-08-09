@@ -7,6 +7,7 @@ import {
   uuidSchema,
   workOrderSchema,
 } from "@/schemas/common";
+import { formatPersonName, hasNameAndSurname } from "@/lib/person-name";
 
 /**
  * §18-§35 · Reglas del proceso de revisión técnica.
@@ -19,7 +20,13 @@ import {
 // §18 · Registro de salida a planta
 export const openReviewSchema = z.object({
   fleet_id: uuidSchema,
-  driver_name: requiredText("el nombre del conductor", 160),
+  // Un solo campo, pero con nombre Y apellido: el registro puede acabar en una
+  // auditoría, y «Juan» no identifica a nadie. Se normaliza al guardar para que
+  // el mismo conductor no figure como «JUAN PEREZ», «juan perez» y «Juan Perez»
+  // en tres filas distintas del historial.
+  driver_name: requiredText("el nombre del conductor", 160)
+    .refine(hasNameAndSurname, "Ingrese el nombre y el apellido del conductor.")
+    .transform(formatPersonName),
   // Opcional: por defecto es el momento del registro
   departure_at: z
     .string()

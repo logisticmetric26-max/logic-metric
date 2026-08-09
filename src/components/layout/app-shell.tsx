@@ -120,7 +120,7 @@ export function AppShell({
             aria-hidden
           />
           <div className="liquid-thick edge animate-slide-in-right absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col shadow-[var(--shadow-overlay)]">
-            <div className="safe-top flex items-center justify-between px-4 pt-4 pb-3">
+            <div className="flex items-center justify-between px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3">
               <Brand />
               <button
                 type="button"
@@ -272,7 +272,7 @@ function SidebarContent({
         onClick={onOpenProfile}
         aria-label="Abrir mi perfil"
         className={cn(
-          "safe-bottom group mx-2 mb-2 flex items-center gap-2.5 rounded-xl text-left",
+          "group mx-2 mb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center gap-2.5 rounded-xl text-left",
           "transition-colors duration-200 hover:bg-fill-subtle",
           collapsed ? "justify-center p-2" : "px-2.5 py-2",
         )}
@@ -376,7 +376,7 @@ function Header({
   return (
     <header
       className={cn(
-        "liquid-thin edge safe-top sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3",
+        "liquid-thin edge sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3",
         "px-4 shadow-[var(--shadow-card)] sm:px-5",
         // Flotante en escritorio, a sangre en móvil
         "lg:top-3 lg:rounded-2xl",
