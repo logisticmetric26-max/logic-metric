@@ -1,22 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowRight, FileSpreadsheet, Plus } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  FileSpreadsheet,
+  Plus,
+  Timer,
+  Wrench,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, StatTile } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FilterDate, FilterSelect } from "@/components/ui/filters";
 import { RegisterDepartureModal } from "@/features/technical-reviews/register-departure-modal";
-import {
-  AGING_RAMP,
-  CHART_COLORS,
-  ChartEmptyState,
-  EXPIRATION_COLORS,
-  MonthlyColumns,
-  RankedBars,
-  SegmentedBar,
-  SeriesLegend,
-} from "@/features/technical-reviews/charts";
 import type { RejectionAnalytics } from "@/features/technical-reviews/analytics-core";
 import type {
   ExpirationAnalytics,
@@ -25,21 +27,16 @@ import type {
   OpenReviewsAnalytics,
 } from "@/features/technical-reviews/subsection-analytics";
 import { formatDateOnly, formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { TechnicalReviewSummary } from "@/types/database.types";
 
-/**
- * §17, §28 · Tablero de Revisión Técnica.
- *
- * No es un panel independiente: es el resumen de las SUBSECCIONES. Cada bloque
- * corresponde a una pestaña —En revisión, No enviados, Rechazados,
- * Vencimientos, Historial—, resume su tabla y enlaza a ella. Así el tablero no
- * puede contradecir a los listados: mira los mismos datos con las mismas RLS.
- *
- * Densidad deliberada: los contadores ocupan una franja y el espacio vertical
- * queda para los gráficos, que son los que explican el número. Cada indicador
- * declara su alcance temporal, porque los vencimientos son estado de HOY y
- * conviven con cifras del período filtrado.
- */
+const APPROVED = "#64748b";
+const REJECTED = "#c68b59";
+const VALID = "#64748b";
+const SOON = "#c68b59";
+const EXPIRED = "#c2413a";
+const NO_RECORD = "#c5ccd6";
+
 export function SummaryDashboard({
   summary,
   analytics,
@@ -65,61 +62,101 @@ export function SummaryDashboard({
 }) {
   const [registering, setRegistering] = useState(false);
 
-  const period = periodLabel.toLowerCase();
   const closed = summary.approved + summary.rejected;
   const rejectionRate = closed === 0 ? null : Math.round((summary.rejected / closed) * 100);
+  const longestOpen = openReviews.longest[0]?.days ?? 0;
+  const areaTotal = analytics.byArea.MANTENCION + analytics.byArea.LOGISTICA;
 
-  const indicators = [
+  const topMetrics = [
     {
-      label: "En revisión",
+      label: "En revision",
       value: summary.in_review,
-      tone: "info" as const,
-      hint: "En planta ahora",
+      hint: longestOpen > 0 ? `Mayor permanencia: ${formatNumber(longestOpen)} d` : "Sin atrasos",
+      icon: <Timer className="size-5" aria-hidden />,
+      iconTone: "text-slate-600 bg-slate-100",
     },
     {
-      label: "Aprobados",
+      label: "Aprobadas",
       value: summary.approved,
-      tone: "success" as const,
-      hint: rejectionRate === null ? period : `${100 - rejectionRate}% de las cerradas`,
+      hint: closed === 0 ? periodLabel : `${formatNumber(100 - (rejectionRate ?? 0))}% de cerradas`,
+      icon: <CheckCircle2 className="size-5" aria-hidden />,
+      iconTone: "text-slate-700 bg-slate-100",
     },
     {
-      label: "Rechazados",
+      label: "Rechazadas",
       value: summary.rejected,
-      tone: "danger" as const,
-      hint: rejectionRate === null ? period : `${rejectionRate}% de las cerradas`,
-    },
-    {
-      label: "No enviados",
-      value: summary.not_sent,
-      tone: "neutral" as const,
-      hint: period,
+      hint: closed === 0 ? periodLabel : `${formatNumber(rejectionRate ?? 0)}% de cerradas`,
+      icon: <XCircle className="size-5" aria-hidden />,
+      iconTone: "text-amber-700 bg-amber-50",
     },
     {
       label: "Por vencer",
       value: summary.expiring_soon,
-      tone: "warning" as const,
-      hint: `Dentro de ${summary.expiring_soon_days} días · hoy`,
+      hint: `Dentro de ${formatNumber(summary.expiring_soon_days)} dias`,
+      icon: <Clock3 className="size-5" aria-hidden />,
+      iconTone: "text-amber-700 bg-amber-50",
     },
     {
       label: "Vencidos",
       value: summary.expired,
-      tone: "danger" as const,
-      hint: "Sin revisión vigente · hoy",
+      hint: summary.expired > 0 ? "Requieren gestion inmediata" : "Sin urgencias criticas",
+      icon: <AlertTriangle className="size-5" aria-hidden />,
+      iconTone: "text-red-700 bg-red-50",
     },
   ];
 
+  const expirationCounts = {
+    valid: expirations.byStatus.find((item) => item.key === "VALID")?.count ?? 0,
+    soon: expirations.byStatus.find((item) => item.key === "EXPIRING_SOON")?.count ?? 0,
+    expired: expirations.byStatus.find((item) => item.key === "EXPIRED")?.count ?? 0,
+    noRecord: expirations.byStatus.find((item) => item.key === "NO_RECORD")?.count ?? 0,
+  };
+
+  const areaSegments = [
+    {
+      label: "Mantencion",
+      value: analytics.byArea.MANTENCION,
+      color: APPROVED,
+      detail:
+        areaTotal === 0
+          ? "0%"
+          : `${formatNumber(Math.round((analytics.byArea.MANTENCION / areaTotal) * 100))}%`,
+    },
+    {
+      label: "Logistica",
+      value: analytics.byArea.LOGISTICA,
+      color: REJECTED,
+      detail:
+        areaTotal === 0
+          ? "0%"
+          : `${formatNumber(Math.round((analytics.byArea.LOGISTICA / areaTotal) * 100))}%`,
+    },
+  ];
+
+  const operationalAlerts = buildOperationalAlerts({
+    summary,
+    openReviews,
+    notSent,
+    analytics,
+  });
+
   return (
     <>
-      {/* ── Período y filtros ─────────────────────────────────────────────── */}
-      <Card className="mb-4">
-        <CardHeader
-          title="Período y filtros"
-          description="Los vencimientos reflejan el estado actual de la flota y no dependen del período."
-          actions={
-            <>
+      <Card solid className="mb-4">
+        <div className="flex flex-col gap-5 px-5 py-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-[30px] leading-none font-semibold tracking-[-0.03em] text-ink">
+                Resumen
+              </h2>
+              <p className="mt-2 max-w-2xl text-[14px] text-ink-muted">
+                Vision general del estado operativo de revision tecnica para {periodLabel.toLowerCase()}.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="secondary"
-                // Descarga directa: el enlace lleva los filtros vigentes
                 onClick={() => {
                   window.location.href = exportHref;
                 }}
@@ -135,274 +172,291 @@ export function SummaryDashboard({
                   Registrar salida
                 </Button>
               )}
-            </>
-          }
-        />
-        <div className="flex flex-wrap items-end gap-3 px-5 py-4">
-          <FilterDate paramName="desde" label="Desde" className="w-full sm:w-44" />
-          <FilterDate paramName="hasta" label="Hasta" className="w-full sm:w-44" />
-          {/* §17 · el selector de terminal sólo aparece si tiene más de uno */}
-          {terminals.length > 1 && (
-            <FilterSelect
-              paramName="terminal"
-              label="Terminal"
-              allLabel="Todos mis terminales"
-              options={terminals.map((terminal) => ({
-                value: terminal.id,
-                label: terminal.name,
-              }))}
-              className="w-full sm:w-56"
-            />
-          )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <FilterDate paramName="desde" label="Desde" className="w-full" />
+            <FilterDate paramName="hasta" label="Hasta" className="w-full" />
+            {terminals.length > 1 && (
+              <FilterSelect
+                paramName="terminal"
+                label="Terminal"
+                allLabel="Todos mis terminales"
+                options={terminals.map((terminal) => ({
+                  value: terminal.id,
+                  label: terminal.name,
+                }))}
+                className="w-full xl:col-span-2"
+              />
+            )}
+          </div>
         </div>
       </Card>
 
-      {/* ── Franja de indicadores ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-        {indicators.map((indicator) => (
-          <StatTile
-            key={indicator.label}
-            label={indicator.label}
-            value={formatNumber(indicator.value)}
-            tone={indicator.tone}
-            hint={indicator.hint}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {topMetrics.map((metric) => (
+          <MetricCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            hint={metric.hint}
+            icon={metric.icon}
+            iconTone={metric.iconTone}
           />
         ))}
       </div>
 
-      {/* ── Paneles por subsección ────────────────────────────────────────── */}
-      {/* `items-start`: cada panel mide lo que necesita. Estirarlos a la altura
-          del más alto de su fila abría huecos vacíos dentro de las tarjetas. */}
-      <div className="mt-4 grid items-start gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {/* En revisión · cuánto llevan fuera */}
-        <Panel
-          title="En revisión"
-          subtitle="Tiempo que llevan los buses en planta."
-          href="/revision-tecnica/en-revision"
-        >
-          {openReviews.total === 0 ? (
-            <ChartEmptyState message="Ningún bus se encuentra en planta en este momento." />
-          ) : (
-            <div className="flex flex-col gap-3.5">
-              <SegmentedBar
-                segments={openReviews.buckets.map((bucket, index) => ({
-                  key: bucket.key,
-                  label: bucket.label,
-                  count: bucket.count,
-                  color: AGING_RAMP[index] ?? AGING_RAMP[AGING_RAMP.length - 1],
-                }))}
-              />
-              <MiniList
-                caption="Más tiempo fuera"
-                rows={openReviews.longest.map((bus) => ({
-                  key: bus.ppu,
-                  primary: bus.internal_number,
-                  secondary: bus.ppu,
-                  value: bus.days === 0 ? "hoy" : `${formatNumber(bus.days)} d`,
-                }))}
-              />
-            </div>
-          )}
-        </Panel>
-
-        {/* Vencimientos · estado de la flota hoy */}
-        <Panel
-          title="Vencimientos"
-          subtitle={`Estado de ${formatNumber(expirations.total)} buses activos, hoy.`}
-          href="/revision-tecnica/vencimientos"
-        >
-          {expirations.total === 0 ? (
-            <ChartEmptyState message="No hay buses activos en los terminales seleccionados." />
-          ) : (
-            <div className="flex flex-col gap-3.5">
-              <SegmentedBar
-                segments={expirations.byStatus.map((status) => ({
-                  key: status.key,
-                  label: status.label,
-                  count: status.count,
-                  color: EXPIRATION_COLORS[status.key],
-                }))}
-              />
-              {expirations.attention.length > 0 && (
-                <MiniList
-                  caption="Requieren atención"
-                  rows={expirations.attention.map((bus) => ({
-                    key: bus.ppu,
-                    primary: bus.internal_number,
-                    secondary: bus.ppu,
-                    value:
-                      bus.expiration_status === "NO_RECORD"
-                        ? "sin registro"
-                        : formatDateOnly(bus.expiration_date),
-                  }))}
-                />
-              )}
-            </div>
-          )}
-        </Panel>
-
-        {/* Historial · cerradas mes a mes */}
-        <Panel
-          title="Historial"
-          subtitle="Revisiones cerradas por mes."
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1.18fr_1fr]">
+        <SummaryPanel
+          title="Historial mensual"
+          subtitle="Revision tecnica cerrada por mes para el periodo filtrado."
           href="/revision-tecnica/historial"
           actions={
             history.months.length > 0 && (
-              <SeriesLegend
-                items={[
-                  { label: "Aprobadas", color: CHART_COLORS.MANTENCION },
-                  { label: "Rechazadas", color: CHART_COLORS.LOGISTICA },
-                ]}
-              />
+              <div className="flex items-center gap-3 text-[11px] text-ink-secondary">
+                <LegendDot color={APPROVED} label="Aprobadas" />
+                <LegendDot color={REJECTED} label="Rechazadas" />
+              </div>
             )
           }
         >
           {history.months.length === 0 ? (
-            <ChartEmptyState message="Todavía no hay revisiones cerradas en el período seleccionado." />
+            <EmptyBlock message="Todavia no hay revisiones cerradas en el periodo seleccionado." />
           ) : (
-            <MonthlyColumns months={history.months} />
+            <HistoryBars months={history.months} />
           )}
-        </Panel>
+        </SummaryPanel>
 
-        {/* Rechazados · reparto por área */}
-        <Panel
-          title="Rechazos por área"
-          subtitle="Logística: extintor, norma gráfica, placa patente y limpieza. El resto, Mantención."
+        <SummaryPanel
+          title="Vencimientos hoy"
+          subtitle={`Estado actual de ${formatNumber(expirations.total)} buses activos.`}
+          href="/revision-tecnica/vencimientos"
+          emphasis
+        >
+          {expirations.total === 0 ? (
+            <EmptyBlock message="No hay buses activos en los terminales seleccionados." />
+          ) : (
+            <div className="flex flex-col gap-4">
+              <StatusSegments
+                segments={[
+                  { label: "Vigente", value: expirationCounts.valid, color: VALID },
+                  { label: "Por vencer", value: expirationCounts.soon, color: SOON },
+                  { label: "Vencido", value: expirationCounts.expired, color: EXPIRED },
+                  { label: "Sin registro", value: expirationCounts.noRecord, color: NO_RECORD },
+                ]}
+              />
+
+              <div className="grid gap-2 sm:grid-cols-4">
+                <InlineStat label="Vigente" value={expirationCounts.valid} tone="neutral" />
+                <InlineStat label="Por vencer" value={expirationCounts.soon} tone="warning" />
+                <InlineStat label="Vencido" value={expirationCounts.expired} tone="danger" />
+                <InlineStat label="Sin registro" value={expirationCounts.noRecord} tone="soft" />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-[12px] font-semibold text-ink">Requieren atencion</p>
+                  <Link
+                    href="/revision-tecnica/vencimientos"
+                    className="text-[11px] font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    Ver todos
+                  </Link>
+                </div>
+
+                {expirations.attention.length === 0 ? (
+                  <EmptyInline text="No hay unidades criticas fuera de estado vigente." />
+                ) : (
+                  <ul className="divide-y divide-border rounded-md border border-border bg-surface-subtle/60">
+                    {expirations.attention.map((bus) => (
+                      <li
+                        key={`${bus.ppu}-${bus.expiration_status}`}
+                        className="grid gap-2 px-3 py-2.5 sm:grid-cols-[1.1fr_1fr_auto]"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-medium text-ink">{bus.internal_number}</p>
+                          <p className="truncate font-mono text-[11px] text-ink-muted">
+                            {bus.ppu} - {bus.terminal_name}
+                          </p>
+                        </div>
+                        <div className="text-[11px] text-ink-secondary">
+                          {bus.expiration_status === "NO_RECORD"
+                            ? "Sin revision aprobada"
+                            : formatDateOnly(bus.expiration_date)}
+                        </div>
+                        <StatusBadge
+                          tone={
+                            bus.expiration_status === "EXPIRED"
+                              ? "danger"
+                              : bus.expiration_status === "EXPIRING_SOON"
+                                ? "warning"
+                                : "soft"
+                          }
+                        >
+                          {bus.expiration_status === "EXPIRED"
+                            ? "Vencido"
+                            : bus.expiration_status === "EXPIRING_SOON"
+                              ? "Por vencer"
+                              : "Sin registro"}
+                        </StatusBadge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </SummaryPanel>
+      </div>
+
+      <div className="mt-3 grid gap-3 xl:grid-cols-3">
+        <SummaryPanel
+          title="Rechazos por area"
+          subtitle="Distribucion del periodo entre mantencion y logistica."
           href="/revision-tecnica/rechazados"
         >
           {analytics.reasonCount === 0 ? (
-            <ChartEmptyState message="Sin revisiones rechazadas en el período." />
+            <EmptyBlock message="Sin revisiones rechazadas en el periodo." compact />
           ) : (
-            <div className="flex flex-col gap-3.5">
-              <SegmentedBar
-                segments={[
-                  {
-                    key: "MANTENCION",
-                    label: "Mantención",
-                    count: analytics.byArea.MANTENCION,
-                    color: CHART_COLORS.MANTENCION,
-                  },
-                  {
-                    key: "LOGISTICA",
-                    label: "Logística",
-                    count: analytics.byArea.LOGISTICA,
-                    color: CHART_COLORS.LOGISTICA,
-                  },
-                ]}
-              />
-              <MiniList
-                caption="Buses con más rechazos"
-                rows={analytics.byBus.slice(0, 4).map((bus) => ({
-                  key: bus.ppu,
-                  primary: bus.internal_number,
-                  secondary: bus.ppu,
-                  value: `${formatNumber(bus.reasons)} mot.`,
-                }))}
-              />
+            <div className="grid items-center gap-4 md:grid-cols-[180px_1fr]">
+              <DonutSummary total={analytics.reasonCount} segments={areaSegments} />
+              <div className="space-y-2">
+                {areaSegments.map((segment) => (
+                  <div
+                    key={segment.label}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-subtle/60 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: segment.color }}
+                      />
+                      <span className="text-[12px] text-ink-secondary">{segment.label}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[12px] font-semibold text-ink">
+                        {formatNumber(segment.value)}
+                      </p>
+                      <p className="text-[10.5px] text-ink-muted">{segment.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </Panel>
+        </SummaryPanel>
 
-        {/* Rechazados · motivos */}
-        <Panel
-          title="Rechazos más comunes"
-          subtitle="Motivos agrupados aunque el texto del certificado varíe."
-          href="/revision-tecnica/rechazados"
-        >
-          {analytics.byReason.length === 0 ? (
-            <ChartEmptyState message="Sin motivos registrados en el período." />
-          ) : (
-            <RankedBars
-              maxItems={7}
-              items={analytics.byReason.map((reason) => ({
-                label: reason.label,
-                value: reason.count,
-                area: reason.area,
-                hint: reason.component,
-              }))}
-            />
-          )}
-        </Panel>
-
-        {/* Rechazados · componentes */}
-        <Panel
+        <SummaryPanel
           title="Componentes comprometidos"
-          subtitle="Dónde se concentran los hallazgos. El color indica el área."
+          subtitle="Sectores con mayor concentracion de hallazgos."
           href="/revision-tecnica/rechazados"
         >
           {analytics.byComponent.length === 0 ? (
-            <ChartEmptyState message="Sin componentes registrados en el período." />
+            <EmptyBlock message="Sin componentes registrados en el periodo." compact />
           ) : (
-            <RankedBars
-              maxItems={7}
-              remainderNoun="componente"
-              items={analytics.byComponent.map((component) => ({
+            <MeterList
+              items={analytics.byComponent.slice(0, 5).map((component) => ({
                 label: component.label,
                 value: component.count,
-                area: component.area,
+                color: component.area === "LOGISTICA" ? REJECTED : APPROVED,
+                hint: component.area === "LOGISTICA" ? "Logistica" : "Mantencion",
               }))}
             />
           )}
-        </Panel>
+        </SummaryPanel>
 
-        {/* No enviados · motivos */}
-        <Panel
+        <SummaryPanel
           title="No enviados"
-          subtitle="Motivos por los que el bus no salió a planta."
+          subtitle="Motivos por los que una unidad no salio a planta."
           href="/revision-tecnica/no-enviados"
-          className="xl:col-span-2"
         >
           {notSent.total === 0 ? (
-            <ChartEmptyState message="No hay registros de buses no enviados en el período." />
+            <CompactState
+              icon={<ClipboardList className="size-7" aria-hidden />}
+              title="Sin pendientes"
+              message="No hay registros de buses no enviados en el periodo."
+            />
           ) : (
-            <div className="grid gap-x-6 gap-y-3.5 sm:grid-cols-2">
-              <RankedBars
-                maxItems={6}
-                items={notSent.byReason.map((reason) => ({
-                  label: reason.label,
-                  value: reason.count,
-                }))}
-              />
-              <MiniList
-                caption="Buses con más no envíos"
-                rows={notSent.byBus.slice(0, 6).map((bus) => ({
-                  key: bus.ppu,
-                  primary: bus.internal_number,
-                  secondary: bus.ppu,
-                  value: formatNumber(bus.count),
+            <div className="flex flex-col gap-3">
+              <div className="rounded-md border border-border bg-surface-subtle/60 px-3 py-2.5">
+                <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-ink-muted">
+                  Registros del periodo
+                </p>
+                <p className="mt-1 text-[26px] leading-none font-semibold tracking-[-0.03em] text-ink">
+                  {formatNumber(notSent.total)}
+                </p>
+              </div>
+
+              <MiniRows
+                rows={notSent.byReason.slice(0, 4).map((reason) => ({
+                  key: reason.label,
+                  primary: reason.label,
+                  secondary: "Motivo registrado",
+                  value: formatNumber(reason.count),
                 }))}
               />
             </div>
           )}
-        </Panel>
+        </SummaryPanel>
+      </div>
 
-        {/* Resumen del análisis de rechazos */}
-        <Panel
-          title="Análisis de rechazos"
-          subtitle="Volumen del período y densidad de hallazgos."
+      <div className="mt-3 grid gap-3 xl:grid-cols-[1.15fr_1fr]">
+        <SummaryPanel
+          title="Top motivos"
+          subtitle="Principales causas confirmadas en revisiones rechazadas."
           href="/revision-tecnica/rechazados"
         >
-          {analytics.reasonCount === 0 ? (
-            <ChartEmptyState message="Cuando existan revisiones rechazadas, aquí verá el volumen y el promedio de motivos." />
+          {analytics.byReason.length === 0 ? (
+            <EmptyBlock message="Cuando existan rechazos, aqui vera los motivos mas frecuentes." compact />
           ) : (
-            <dl className="grid grid-cols-3 gap-2.5">
-              {[
-                { label: "Motivos", value: formatNumber(analytics.reasonCount) },
-                { label: "Revisiones", value: formatNumber(analytics.eventCount) },
-                { label: "Promedio", value: analytics.averagePerEvent.toLocaleString("es-CL") },
-              ].map((item) => (
-                <div key={item.label} className="rounded-lg bg-surface-subtle px-3 py-2.5">
-                  <dt className="text-[10.5px] font-medium tracking-[0.02em] text-ink-muted uppercase">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-0.5 text-[19px] leading-none font-semibold tracking-[-0.02em] text-ink">
-                    {item.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <MeterList
+              items={analytics.byReason.slice(0, 5).map((reason) => ({
+                label: reason.label,
+                value: reason.count,
+                color: reason.area === "LOGISTICA" ? REJECTED : APPROVED,
+                hint: reason.component,
+              }))}
+              showIndex
+            />
           )}
-        </Panel>
+        </SummaryPanel>
+
+        <SummaryPanel
+          title="Alertas operativas"
+          subtitle="Senales rapidas para gestionar el dia sin perder el contexto."
+          href="/revision-tecnica"
+        >
+          {operationalAlerts.length === 0 ? (
+            <CompactState
+              icon={<CheckCircle2 className="size-7" aria-hidden />}
+              title="Operacion estable"
+              message="No hay alertas prioritarias para el periodo seleccionado."
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {operationalAlerts.map((alert) => (
+                <Link
+                  key={alert.key}
+                  href={alert.href}
+                  className="group flex items-start gap-3 rounded-md border border-border bg-surface-subtle/60 px-3 py-3 transition-colors hover:border-border-strong hover:bg-surface-subtle"
+                >
+                  <span className={cn("mt-0.5 rounded-md p-1.5", alert.toneClass)}>{alert.icon}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12px] font-medium text-ink">{alert.title}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">
+                      {alert.description}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[11px] font-medium text-brand-700 group-hover:text-brand-800">
+                    Ver
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </SummaryPanel>
       </div>
 
       {canCreate && (
@@ -412,43 +466,70 @@ export function SummaryDashboard({
   );
 }
 
-/**
- * Tarjeta de una subsección.
- *
- * El título es el enlace a la pestaña que resume: el tablero se lee y se
- * navega por el mismo sitio, sin un «ver más» suelto que haya que buscar.
- */
-function Panel({
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon,
+  iconTone,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  icon: ReactNode;
+  iconTone: string;
+}) {
+  return (
+    <Card solid className="h-full">
+      <div className="flex h-full items-center gap-4 px-4 py-4">
+        <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-full", iconTone)}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-[0.05em] text-ink-muted">
+            {label}
+          </p>
+          <p className="mt-1 text-[30px] leading-none font-semibold tracking-[-0.04em] text-ink">
+            {formatNumber(value)}
+          </p>
+          <p className="mt-2 text-[11px] text-ink-muted">{hint}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SummaryPanel({
   title,
   subtitle,
   href,
+  emphasis,
   actions,
-  className,
   children,
 }: {
   title: string;
   subtitle: string;
   href: string;
-  actions?: React.ReactNode;
-  className?: string;
-  children: React.ReactNode;
+  emphasis?: boolean;
+  actions?: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <Card className={className}>
-      <div className="flex flex-col gap-3 p-4">
+    <Card solid className={cn(emphasis && "ring-1 ring-inset ring-slate-200")}>
+      <div className="flex flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <Link
               href={href}
-              className="group inline-flex items-center gap-1 rounded-sm text-[12.5px] font-semibold tracking-[-0.01em] text-ink focus-visible:outline-2"
+              className="group inline-flex items-center gap-1 text-[18px] font-semibold tracking-[-0.02em] text-ink"
             >
               {title}
               <ArrowRight
+                className="size-4 text-ink-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
                 aria-hidden
-                className="size-3 text-ink-subtle transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-600"
               />
             </Link>
-            <p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{subtitle}</p>
+            <p className="mt-1 text-[12px] text-ink-muted">{subtitle}</p>
           </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>
@@ -458,34 +539,390 @@ function Panel({
   );
 }
 
-/** Lista compacta de apoyo: nombre, identificador y una cifra a la derecha. */
-function MiniList({
-  caption,
-  rows,
-}: {
-  caption: string;
-  rows: { key: string; primary: string; secondary: string; value: string }[];
-}) {
-  if (rows.length === 0) return null;
+function HistoryBars({ months }: { months: HistoryAnalytics["months"] }) {
+  const max = Math.max(...months.map((month) => month.approved + month.rejected), 1);
 
   return (
-    <div>
-      <p className="mb-1.5 text-[10.5px] font-medium tracking-[0.03em] text-ink-subtle uppercase">
-        {caption}
-      </p>
-      <ul className="flex flex-col divide-y divide-border">
-        {rows.map((row) => (
-          <li key={row.key} className="flex items-baseline gap-2 py-[5px] first:pt-0 last:pb-0">
-            <span className="shrink-0 text-[11.5px] font-medium text-ink">{row.primary}</span>
-            <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-ink-subtle">
-              {row.secondary}
-            </span>
-            <span className="shrink-0 text-[11.5px] text-ink-secondary tabular-nums">
-              {row.value}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="flex flex-col gap-3">
+      <div className="flex h-[240px] items-end gap-4 border-b border-border pb-3">
+        {months.map((month) => {
+          const approvedHeight = (month.approved / max) * 100;
+          const rejectedHeight = (month.rejected / max) * 100;
+
+          return (
+            <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-3">
+              <div
+                className="flex h-full w-full max-w-[72px] flex-col justify-end overflow-hidden rounded-t-md bg-surface-subtle"
+                title={`${month.label}: ${formatNumber(month.approved)} aprobadas, ${formatNumber(month.rejected)} rechazadas`}
+              >
+                {month.rejected > 0 && (
+                  <div
+                    className="w-full"
+                    style={{
+                      height: `${Math.max(rejectedHeight, 4)}%`,
+                      backgroundColor: REJECTED,
+                    }}
+                  />
+                )}
+                {month.approved > 0 && (
+                  <div
+                    className="w-full"
+                    style={{
+                      height: `${Math.max(approvedHeight, 4)}%`,
+                      backgroundColor: APPROVED,
+                    }}
+                  />
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] font-medium text-ink-secondary">{month.label}</p>
+                <p className="mt-1 text-[10.5px] text-ink-muted">
+                  {formatNumber(month.approved + month.rejected)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <InlineStat label="Aprobadas" value={historyTotal(months, "approved")} tone="neutral" />
+        <InlineStat label="Rechazadas" value={historyTotal(months, "rejected")} tone="warning" />
+        <InlineStat
+          label="Tasa rechazo"
+          value={historyRate(months)}
+          tone="soft"
+          useRawValue
+        />
+      </div>
     </div>
   );
+}
+
+function StatusSegments({
+  segments,
+}: {
+  segments: { label: string; value: number; color: string }[];
+}) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  const visible = segments.filter((segment) => segment.value > 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex h-5 gap-px overflow-hidden rounded-md bg-surface-subtle">
+        {visible.map((segment) => (
+          <div
+            key={segment.label}
+            className="flex items-center justify-center text-[10.5px] font-semibold text-white"
+            style={{
+              width: `${(segment.value / Math.max(total, 1)) * 100}%`,
+              backgroundColor: segment.color,
+            }}
+          >
+            {segment.value > 0 ? formatNumber(segment.value) : ""}
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-4">
+        {segments.map((segment) => (
+          <div key={segment.label} className="flex items-center gap-2 text-[11px] text-ink-secondary">
+            <span
+              aria-hidden
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: segment.color }}
+            />
+            <span className="truncate">{segment.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InlineStat({
+  label,
+  value,
+  tone,
+  useRawValue,
+}: {
+  label: string;
+  value: number | string;
+  tone: "neutral" | "warning" | "danger" | "soft";
+  useRawValue?: boolean;
+}) {
+  const toneClass = {
+    neutral: "text-slate-700 bg-slate-50 border-slate-200",
+    warning: "text-amber-800 bg-amber-50 border-amber-200",
+    danger: "text-red-700 bg-red-50 border-red-200",
+    soft: "text-ink-secondary bg-surface-subtle border-border",
+  } as const;
+
+  return (
+    <div className={cn("rounded-md border px-3 py-2.5", toneClass[tone])}>
+      <p className="text-[10.5px] font-medium uppercase tracking-[0.04em]">{label}</p>
+      <p className="mt-1 text-[24px] leading-none font-semibold tracking-[-0.03em]">
+        {useRawValue ? value : formatNumber(Number(value))}
+      </p>
+    </div>
+  );
+}
+
+function StatusBadge({
+  tone,
+  children,
+}: {
+  tone: "warning" | "danger" | "soft";
+  children: ReactNode;
+}) {
+  const toneClass = {
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+    danger: "border-red-200 bg-red-50 text-red-700",
+    soft: "border-slate-200 bg-slate-50 text-slate-700",
+  } as const;
+
+  return (
+    <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[10.5px] font-medium", toneClass[tone])}>
+      {children}
+    </span>
+  );
+}
+
+function DonutSummary({
+  total,
+  segments,
+}: {
+  total: number;
+  segments: { label: string; value: number; color: string; detail: string }[];
+}) {
+  const gradient = buildConicGradient(segments, total);
+
+  return (
+    <div className="flex items-center justify-center">
+      <div
+        className="relative flex size-[168px] items-center justify-center rounded-full"
+        style={{ background: gradient }}
+      >
+        <div className="flex size-[102px] flex-col items-center justify-center rounded-full bg-surface shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]">
+          <span className="text-[30px] leading-none font-semibold tracking-[-0.04em] text-ink">
+            {formatNumber(total)}
+          </span>
+          <span className="mt-1 text-[11px] text-ink-muted">Total</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MeterList({
+  items,
+  showIndex,
+}: {
+  items: { label: string; value: number; color: string; hint?: string }[];
+  showIndex?: boolean;
+}) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        <div key={`${item.label}-${index}`} className="grid gap-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 text-[12px] text-ink-secondary">
+              {showIndex && <span className="mr-2 font-medium text-ink">{index + 1}</span>}
+              <span className="truncate">{item.label}</span>
+              {item.hint && <span className="ml-2 text-[10.5px] text-ink-muted">{item.hint}</span>}
+            </div>
+            <span className="shrink-0 text-[12px] font-medium text-ink">{formatNumber(item.value)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-surface-subtle">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.max((item.value / max) * 100, 8)}%`,
+                backgroundColor: item.color,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniRows({
+  rows,
+}: {
+  rows: { key: string; primary: string; secondary: string; value: string }[];
+}) {
+  return (
+    <ul className="divide-y divide-border rounded-md border border-border bg-surface-subtle/60">
+      {rows.map((row) => (
+        <li key={row.key} className="flex items-center gap-3 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] font-medium text-ink">{row.primary}</p>
+            <p className="truncate text-[10.5px] text-ink-muted">{row.secondary}</p>
+          </div>
+          <span className="shrink-0 text-[12px] font-medium text-ink">{row.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CompactState({
+  icon,
+  title,
+  message,
+}: {
+  icon: ReactNode;
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="flex min-h-[196px] flex-col items-center justify-center gap-3 rounded-md bg-surface-subtle/60 px-6 py-6 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-surface text-slate-400">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[16px] font-semibold tracking-[-0.02em] text-ink">{title}</p>
+        <p className="mt-1 max-w-[22rem] text-[12px] leading-relaxed text-ink-muted">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyBlock({ message, compact }: { message: string; compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-center rounded-md border border-dashed border-border bg-surface-subtle/50 px-5 text-center text-[12px] text-ink-muted",
+        compact ? "min-h-[164px] py-8" : "min-h-[240px] py-12",
+      )}
+    >
+      <p className="max-w-[26rem] leading-relaxed">{message}</p>
+    </div>
+  );
+}
+
+function EmptyInline({ text }: { text: string }) {
+  return <p className="rounded-md bg-surface-subtle/60 px-3 py-3 text-[11px] text-ink-muted">{text}</p>;
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function buildOperationalAlerts({
+  summary,
+  openReviews,
+  notSent,
+  analytics,
+}: {
+  summary: TechnicalReviewSummary;
+  openReviews: OpenReviewsAnalytics;
+  notSent: NotSentAnalytics;
+  analytics: RejectionAnalytics;
+}) {
+  const alerts: {
+    key: string;
+    title: string;
+    description: string;
+    href: string;
+    icon: ReactNode;
+    toneClass: string;
+  }[] = [];
+
+  if (summary.expired > 0) {
+    alerts.push({
+      key: "expired",
+      title: `${formatNumber(summary.expired)} buses con revision vencida`,
+      description: "Priorizar regularizacion para evitar continuidad fuera de norma.",
+      href: "/revision-tecnica/vencimientos",
+      icon: <AlertTriangle className="size-4" aria-hidden />,
+      toneClass: "bg-red-50 text-red-700",
+    });
+  }
+
+  if (summary.expiring_soon > 0) {
+    alerts.push({
+      key: "expiring",
+      title: `${formatNumber(summary.expiring_soon)} buses por vencer pronto`,
+      description: `Programar salidas a planta dentro de ${formatNumber(summary.expiring_soon_days)} dias.`,
+      href: "/revision-tecnica/vencimientos",
+      icon: <CalendarClock className="size-4" aria-hidden />,
+      toneClass: "bg-amber-50 text-amber-800",
+    });
+  }
+
+  const delayed = openReviews.buckets.find((bucket) => bucket.key === "OVER_7")?.count ?? 0;
+  if (delayed > 0) {
+    alerts.push({
+      key: "open-delay",
+      title: `${formatNumber(delayed)} buses llevan mas de 7 dias en planta`,
+      description: "Revisar retrasos de retorno y seguimiento con el terminal.",
+      href: "/revision-tecnica/en-revision",
+      icon: <Timer className="size-4" aria-hidden />,
+      toneClass: "bg-slate-100 text-slate-700",
+    });
+  }
+
+  if (notSent.total > 0) {
+    alerts.push({
+      key: "not-sent",
+      title: `${formatNumber(notSent.total)} registros de no enviados`,
+      description: "Monitorear continuidad operacional y causas repetidas del periodo.",
+      href: "/revision-tecnica/no-enviados",
+      icon: <ClipboardList className="size-4" aria-hidden />,
+      toneClass: "bg-slate-100 text-slate-700",
+    });
+  }
+
+  if (analytics.byComponent[0]) {
+    alerts.push({
+      key: "top-component",
+      title: `${analytics.byComponent[0].label} lidera los hallazgos`,
+      description: `Acumula ${formatNumber(analytics.byComponent[0].count)} rechazos confirmados en el periodo.`,
+      href: "/revision-tecnica/rechazados",
+      icon: <Wrench className="size-4" aria-hidden />,
+      toneClass: "bg-slate-100 text-slate-700",
+    });
+  }
+
+  return alerts.slice(0, 3);
+}
+
+function buildConicGradient(
+  segments: { value: number; color: string }[],
+  total: number,
+) {
+  if (total === 0) return "conic-gradient(#e5e7eb 0deg 360deg)";
+
+  let current = 0;
+  const parts = segments.map((segment) => {
+    const start = current;
+    const sweep = (segment.value / total) * 360;
+    current += sweep;
+    return `${segment.color} ${start}deg ${current}deg`;
+  });
+
+  return `conic-gradient(${parts.join(", ")})`;
+}
+
+function historyTotal(
+  months: HistoryAnalytics["months"],
+  key: "approved" | "rejected",
+) {
+  return months.reduce((sum, month) => sum + month[key], 0);
+}
+
+function historyRate(months: HistoryAnalytics["months"]) {
+  const approved = historyTotal(months, "approved");
+  const rejected = historyTotal(months, "rejected");
+  const total = approved + rejected;
+  return total === 0 ? "0%" : `${Math.round((rejected / total) * 100)}%`;
 }
