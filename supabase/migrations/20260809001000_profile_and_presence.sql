@@ -177,7 +177,17 @@ grant execute on function public.set_own_avatar(text) to authenticated;
 -- -----------------------------------------------------------------------------
 -- Vistas
 -- -----------------------------------------------------------------------------
-create or replace view public.profiles_view
+-- `create or replace view` sólo admite AÑADIR columnas al final: no puede
+-- cambiar el orden ni el nombre de las existentes, y aquí `avatar_path` y las
+-- de presencia se intercalan donde corresponden por significado. Por eso se
+-- reemplaza la vista entera.
+--
+-- Sin `cascade` a propósito: si algún día otro objeto dependiera de esta vista,
+-- es preferible que la migración falle y se revise, a que la elimine en
+-- silencio.
+drop view if exists public.profiles_view;
+
+create view public.profiles_view
 with (security_invoker = on) as
 select
   p.id,
