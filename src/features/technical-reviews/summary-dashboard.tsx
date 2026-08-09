@@ -550,9 +550,12 @@ function HistoryBars({ months }: { months: HistoryAnalytics["months"] }) {
           const rejectedHeight = (month.rejected / max) * 100;
 
           return (
-            <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-3">
+            <div
+              key={month.month}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-3"
+            >
               <div
-                className="flex h-full w-full max-w-[72px] flex-col justify-end overflow-hidden rounded-t-md bg-surface-subtle"
+                className="flex min-h-0 w-full max-w-[72px] flex-1 flex-col justify-end overflow-hidden rounded-t-md bg-surface-subtle"
                 title={`${month.label}: ${formatNumber(month.approved)} aprobadas, ${formatNumber(month.rejected)} rechazadas`}
               >
                 {month.rejected > 0 && (
