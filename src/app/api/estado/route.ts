@@ -50,6 +50,25 @@ export async function GET() {
     }
   }
 
+  // La clave de servicio se comprueba con una llamada administrativa real. Que
+  // esté definida no significa que sea la correcta: una clave equivocada deja
+  // el inicio de sesión funcionando y rompe sólo el alta de usuarios, que es
+  // justo el síntoma más difícil de atribuir.
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+  let serviceRoleValida: boolean | null = null;
+
+  if (urlUtilizable && serviceKey.length > 0) {
+    try {
+      const response = await fetch(`${base}/auth/v1/admin/users?page=1&per_page=1`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      serviceRoleValida = response.ok;
+    } catch {
+      serviceRoleValida = false;
+    }
+  }
+
   return NextResponse.json(
     {
       supabase_url_definida: isSet(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -59,6 +78,8 @@ export async function GET() {
       supabase_url_con_ruta_sobrante: urlUtilizable && raw.replace(/\/+$/, "") !== base,
       supabase_anon_key_definida: isSet(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
       supabase_service_role_definida: isSet(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      // Sin esta en `true` no se pueden dar de alta usuarios.
+      supabase_service_role_valida: serviceRoleValida,
       dominio_identificador: process.env.AUTH_EMAIL_DOMAIN?.trim() || "usuarios.interno",
       supabase_alcanzable: supabaseAlcanzable,
     },

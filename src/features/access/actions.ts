@@ -6,7 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireActiveUser } from "@/lib/auth/session";
 import { authIdentifierForRut } from "@/lib/auth/rut-identity";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { actionError, actionSuccess, reportError, type ActionResult } from "@/lib/errors";
+import {
+  actionError,
+  actionSuccess,
+  reportError,
+  toUserMessage,
+  type ActionResult,
+} from "@/lib/errors";
 import { toFieldErrors } from "@/schemas/common";
 import {
   createUserSchema,
@@ -38,6 +44,46 @@ const ACCESS_PATH = "/acceso";
 /** Terminales adicionales enviados como múltiples campos `additional_terminals`. */
 function readTerminalList(formData: FormData): string[] {
   return formData.getAll("additional_terminals").map(String);
+}
+
+/**
+ * Traduce un fallo de Supabase Auth en un mensaje que indique dónde mirar.
+ *
+ * Un genérico «intente nuevamente» hacía buscar el problema en el formulario
+ * cuando la causa estaba en la configuración del servidor: la clave de servicio
+ * equivocada deja el inicio de sesión intacto y rompe SÓLO el alta de usuarios,
+ * porque es la única operación que la necesita.
+ *
+ * No revela ningún valor de configuración, sólo qué componente falló.
+ */
+function describeAuthAdminError(context: string, error: unknown): string {
+  // La traza completa queda en el servidor una sola vez, aquí.
+  reportError(context, error);
+
+  const status = (error as { status?: number } | null)?.status;
+  const message = (error as { message?: string } | null)?.message ?? "";
+
+  if (status === 401 || status === 403) {
+    return "El servidor no está autorizado para administrar credenciales. Revise la clave de servicio de Supabase en la configuración del despliegue.";
+  }
+
+  if (status === 404) {
+    return "No se encontró el servicio de autenticación. Revise la URL de Supabase en la configuración del despliegue.";
+  }
+
+  if (!status) {
+    return "No fue posible conectar con el servicio de autenticación. Avise al administrador.";
+  }
+
+  if (/already|registered|exists/i.test(message)) {
+    return "Ya existe una credencial para ese RUT. Contacte al administrador para recuperarla.";
+  }
+
+  if (/password/i.test(message)) {
+    return "La contraseña no cumple los requisitos mínimos de Supabase.";
+  }
+
+  return toUserMessage(error);
 }
 
 // =============================================================================
@@ -119,7 +165,7 @@ export async function createUserAction(formData: FormData): Promise<ActionResult
   });
 
   if (authError || !created.user) {
-    return actionError(reportError("createUser.auth", authError));
+    return actionError(describeAuthAdminError("createUser.auth", authError));
   }
 
   const userId = created.user.id;
@@ -305,7 +351,7 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
   // Elimina la credencial; `profiles` cae por ON DELETE CASCADE.
   // La bitácora conserva el RUT y el nombre del usuario eliminado.
   const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) return actionError(reportError("deleteUser", error));
+  if (error) return actionError(describeAuthAdminError("deleteUser", error));
 
   revalidatePath(ACCESS_PATH);
   return actionSuccess();
@@ -342,7 +388,7 @@ export async function resetUserPasswordAction(formData: FormData): Promise<Actio
     password: parsed.data.password,
   });
 
-  if (error) return actionError(reportError("resetUserPassword", error));
+  if (error) return actionError(describeAuthAdminError("resetUserPassword", error));
 
   revalidatePath(ACCESS_PATH);
   return actionSuccess();
