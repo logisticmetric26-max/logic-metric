@@ -31,7 +31,7 @@ export default async function LoginPage({
 
       <div className="w-full max-w-[26rem]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-gradient-to-b from-brand-500 to-brand-700 text-[17px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.35),0_8px_24px_-6px_rgb(10_108_255/0.55)]">
+          <span className="mb-5 flex size-14 items-center justify-center rounded-lg bg-gradient-to-b from-brand-solid-from to-brand-solid-to text-[17px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.35),0_8px_24px_-6px_rgb(10_108_255/0.55)]">
             LM
           </span>
           <h1 className="text-[28px] font-semibold tracking-[-0.03em] text-ink">Logic Metric</h1>
@@ -41,7 +41,7 @@ export default async function LoginPage({
         </div>
 
         {/* Panel de cristal: el material dominante del acceso */}
-        <div className="glass-strong rounded-[20px] border border-border p-6 shadow-[var(--shadow-overlay)] sm:p-7">
+        <div className="liquid-thick edge relative rounded-xl p-6 shadow-[var(--shadow-overlay)] sm:p-7">
           <LoginForm nextPath={siguiente} />
         </div>
 

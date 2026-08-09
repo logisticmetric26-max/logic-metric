@@ -23,7 +23,7 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-black/[0.04] text-ink-subtle ring-1 ring-black/[0.04]">
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-fill-subtle text-ink-subtle ring-1 ring-border">
         {icon ?? <Inbox className="size-5" aria-hidden />}
       </div>
       <div className="max-w-sm">

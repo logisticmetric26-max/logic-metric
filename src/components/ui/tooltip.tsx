@@ -26,7 +26,7 @@ export function Tooltip({
         role="tooltip"
         className={cn(
           "pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 whitespace-nowrap",
-          "rounded-md bg-ink px-2 py-1 text-xs text-white",
+          "rounded-md bg-inverse px-2 py-1 text-xs text-inverse-ink",
           "opacity-0 transition-opacity duration-150",
           "group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100",
           "hidden sm:block",

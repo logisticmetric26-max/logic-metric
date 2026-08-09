@@ -13,21 +13,21 @@ type Size = "sm" | "md" | "lg" | "icon";
  */
 const VARIANTS: Record<Variant, string> = {
   primary: cn(
-    "bg-gradient-to-b from-brand-500 to-brand-600 text-white",
+    "bg-gradient-to-b from-brand-solid-from to-brand-solid-to text-white",
     "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.22),0_1px_2px_rgb(15_18_34/0.10),0_2px_8px_-2px_rgb(10_108_255/0.42)]",
-    "hover:from-brand-600 hover:to-brand-700",
+    "hover:brightness-[1.08]",
     "active:shadow-[inset_0_1px_2px_rgb(0_0_0/0.18)]",
-    "disabled:from-brand-500/50 disabled:to-brand-600/50 disabled:shadow-none",
+    "disabled:opacity-60 disabled:shadow-none",
   ),
   secondary: cn(
-    "bg-surface text-ink ring-1 ring-black/[0.09]",
+    "bg-surface text-ink ring-1 ring-ring",
     "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.9),0_1px_2px_rgb(15_18_34/0.05)]",
-    "hover:bg-surface-subtle hover:ring-black/[0.14]",
+    "hover:bg-surface-subtle hover:ring-border-strong",
     "active:bg-surface-muted active:shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)]",
   ),
-  ghost: "text-ink-secondary hover:bg-black/[0.05] hover:text-ink active:bg-black/[0.08]",
+  ghost: "text-ink-secondary hover:bg-fill hover:text-ink active:bg-fill-strong",
   danger: cn(
-    "bg-gradient-to-b from-danger-600 to-danger-700 text-white",
+    "bg-gradient-to-b from-danger-solid-from to-danger-solid-to text-white",
     "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.20),0_1px_2px_rgb(15_18_34/0.10),0_2px_8px_-2px_rgb(216_31_54/0.42)]",
     "hover:brightness-[1.06]",
     "active:shadow-[inset_0_1px_2px_rgb(0_0_0/0.18)]",
@@ -37,10 +37,10 @@ const VARIANTS: Record<Variant, string> = {
 
 const SIZES: Record<Size, string> = {
   // 36–44 px de alto: objetivo táctil cómodo sin engordar la interfaz
-  sm: "h-9 px-3 text-[13px] gap-1.5 rounded-[9px]",
-  md: "h-10 px-4 text-[13px] gap-2 rounded-[10px]",
-  lg: "h-11 px-5 text-[15px] gap-2 rounded-xl",
-  icon: "h-10 w-10 justify-center rounded-[10px]",
+  sm: "h-9 px-3 text-[13px] gap-1.5 rounded-sm",
+  md: "h-10 px-4 text-[13px] gap-2 rounded-md",
+  lg: "h-11 px-5 text-[15px] gap-2 rounded-md",
+  icon: "h-10 w-10 justify-center rounded-md",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

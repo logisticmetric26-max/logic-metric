@@ -1,44 +1,93 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   Sistema de diseño
+   Sistema de diseño · Logic Metric
    =============================================================================
-   Interfaz empresarial con lenguaje de material translúcido.
+   Interfaz empresarial construida sobre material translúcido.
 
    PRINCIPIO RECTOR
    ----------------
    El cromo es cristal; los datos son sólidos.
 
-   Sidebar, header, modales, menús y avisos flotan sobre el fondo con
-   desenfoque y saturación — dan profundidad y contexto espacial. Las tablas,
-   las fichas de detalle y los formularios se apoyan en superficies opacas:
-   sobre 25 filas de datos operacionales, la translucidez destruye la
-   legibilidad y ralentiza el scroll.
+   Barra lateral, cabeceras, modales, menús y avisos flotan sobre el fondo con
+   desenfoque y saturación: dan profundidad y contexto espacial. Las tablas, las
+   fichas y los formularios se apoyan en superficies opacas, porque sobre
+   veinticinco filas de datos la translucidez destruye la legibilidad y encarece
+   el scroll.
 
-   La profundidad se construye con cuatro señales combinadas, nunca con una
-   sola: elevación (sombra multicapa), separación (hairline), luz (reflejo
-   interior superior) y desenfoque del fondo.
+   CÓMO SE CONSTRUYE EL CRISTAL
+   ----------------------------
+   Un panel translúcido creíble necesita CUATRO señales a la vez. Con menos, se
+   ve como un rectángulo gris con opacidad:
+
+     1. TINTE      · un velo del color de la superficie, nunca transparente puro
+     2. ÓPTICA     · blur + saturate; la saturación devuelve el color que el
+                     desenfoque apaga, que es lo que distingue el cristal de un
+                     simple difuminado
+     3. CANTO      · reflejo interior arriba y sombra interior abajo: el borde
+                     biselado que recoge la luz del ambiente
+     4. ELEVACIÓN  · sombra de contacto corta + halo largo y difuso
+
+   Las cuatro viven en los tokens `--mat-*` y `--edge-*`, y se aplican juntas
+   con una sola clase: `.liquid`. Cualquier sección futura obtiene el material
+   completo sin volver a describirlo.
+
+   FONDO AMBIENTAL
+   ---------------
+   El cristal no puede desenfocar un fondo plano: sin ambiente, se ve gris. Los
+   halos de color del `body` son el material que el desenfoque recoge. No son
+   decoración, son parte del efecto.
    ========================================================================== */
 
 @theme {
   /* --- Superficies ------------------------------------------------------- */
   --color-surface: #ffffff;
   --color-surface-subtle: #fafafc;
-  --color-surface-muted: #f4f4f7;
-  --color-canvas: #f0f0f4;
+  --color-surface-muted: #f3f3f7;
+  --color-canvas: #eef0f5;
+
+  /* --- Rellenos ----------------------------------------------------------
+     Estados de interacción (hover, pulsado, pistas de gráfico). Como token y
+     no como `bg-black/[0.04]` suelto: en modo oscuro el relleno debe aclarar,
+     no oscurecer, y un valor literal no puede invertirse. */
+  --color-fill-subtle: rgb(0 0 0 / 0.035);
+  --color-fill: rgb(0 0 0 / 0.06);
+  --color-fill-strong: rgb(0 0 0 / 0.10);
 
   /* --- Bordes ------------------------------------------------------------
-     Semitransparentes: se integran con lo que tengan detrás en vez de
+     Semitransparentes: se integran con lo que tengan detrás en lugar de
      dibujar una línea gris uniforme sobre cualquier fondo. */
   --color-border: rgb(0 0 0 / 0.07);
   --color-border-strong: rgb(0 0 0 / 0.14);
+  --color-ring: rgb(0 0 0 / 0.09);
+
+  /* Superficie invertida: avisos y tooltips que deben destacar del resto.
+     Como par de tokens y no como `bg-ink` + `text-white`, porque en modo oscuro
+     la tinta es casi blanca y el aviso quedaría blanco sobre blanco. */
+  --color-inverse: #17171b;
+  --color-inverse-ink: #f5f5f7;
+
+  /* Rampa sólida de marca para superficies con texto blanco encima (botones,
+     logotipo, avatar). Se separa de `brand-600`, que en oscuro tiene que
+     ACLARARSE para leerse como texto: usar el mismo valor para ambas cosas
+     dejaba el botón primario por debajo del contraste mínimo. */
+  --color-brand-solid-from: #1c6ae8;
+  --color-brand-solid-to: #0a55c4;
+  --color-danger-solid-from: #d81f36;
+  --color-danger-solid-to: #ad1729;
+
+  /* Velo tras modales y drawers. Token propio y no `ink` con opacidad: en modo
+     oscuro la tinta es casi blanca y el velo saldría luminoso. */
+  --color-scrim: rgb(10 12 22 / 0.32);
 
   /* --- Texto -------------------------------------------------------------
      Negro cálido en lugar de negro puro: menos fatiga en lecturas largas. */
-  --color-ink: #1d1d1f;
-  --color-ink-secondary: #4b4b51;
-  --color-ink-muted: #6e6e76;
-  --color-ink-subtle: #9a9aa2;
+  --color-ink: #1a1a1e;
+  --color-ink-secondary: #46464d;
+  --color-ink-muted: #65656e;
+  /* Ajustado hasta 4,5:1 sobre superficie: se usa en rótulos de 10 px, y a
+     ese tamaño un gris más claro deja de ser texto y pasa a ser decoración. */
+  --color-ink-subtle: #70707a;
 
   /* --- Marca -------------------------------------------------------------- */
   --color-brand-50: #eef4ff;
@@ -72,43 +121,158 @@
   --color-info-700: #055a87;
 
   /* --- Tipografía ---------------------------------------------------------
-     Encabeza la pila la fuente del sistema: en Mac e iOS es SF Pro, que da el
-     acabado nativo sin descargar ni un byte de fuente. */
+     Encabeza la pila la fuente del sistema: en Mac e iOS es SF Pro, el acabado
+     nativo sin descargar un solo byte. */
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI Variable",
     "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
 
+  /* --- Radios -------------------------------------------------------------
+     Escala continua. Los contenedores llevan radio mayor que su contenido: si
+     coinciden, el interior parece salirse de la caja. */
+  --radius-xs: 6px;
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 26px;
+
   /* --- Elevación ----------------------------------------------------------
-     Sombras multicapa: un halo amplio y difuso para la elevación, más un
-     contacto corto y denso que ancla el elemento al plano. */
-  --shadow-card: 0 1px 2px rgb(15 18 34 / 0.04), 0 4px 12px -2px rgb(15 18 34 / 0.05);
-  --shadow-raised: 0 2px 4px rgb(15 18 34 / 0.04), 0 12px 28px -6px rgb(15 18 34 / 0.10);
-  --shadow-overlay: 0 8px 16px -4px rgb(15 18 34 / 0.10), 0 32px 64px -12px rgb(15 18 34 / 0.24);
+     Cada nivel combina un contacto corto y denso (ancla la pieza al plano) con
+     un halo amplio y difuso (la separa del fondo). Una sola sombra difusa
+     flota; una sola sombra dura recorta. */
+  --shadow-flat: 0 1px 1px rgb(16 20 38 / 0.03);
+  --shadow-card: 0 1px 2px rgb(16 20 38 / 0.04), 0 4px 12px -3px rgb(16 20 38 / 0.06);
+  --shadow-raised: 0 2px 4px rgb(16 20 38 / 0.05), 0 14px 30px -8px rgb(16 20 38 / 0.11);
+  --shadow-floating: 0 4px 8px -2px rgb(16 20 38 / 0.07), 0 22px 44px -12px rgb(16 20 38 / 0.16);
+  --shadow-overlay: 0 8px 16px -4px rgb(16 20 38 / 0.10), 0 36px 72px -16px rgb(16 20 38 / 0.28);
 
   /* --- Curvas de animación ------------------------------------------------
      Salida rápida y frenado largo: el gesto se siente físico, no lineal. */
   --ease-emphasis: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Rebote contenido para elementos que aparecen (menús, avisos) */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
 /* =============================================================================
-   Cristal · variables de material
+   Material · las cuatro señales del cristal
    ========================================================================== */
 
 :root {
-  /* Tinte de la superficie translúcida */
-  --glass-tint: rgb(255 255 255 / 0.72);
-  --glass-tint-strong: rgb(255 255 255 / 0.86);
+  color-scheme: light;
 
-  /* `saturate` es lo que separa el cristal real del simple desenfoque: revive
-     el color que el blur apaga, igual que la vibrancy del sistema. */
-  --glass-filter: saturate(180%) blur(20px);
-  --glass-filter-strong: saturate(190%) blur(32px);
+  /* 1 · TINTE por densidad de material */
+  --mat-ultrathin: rgb(255 255 255 / 0.5);
+  --mat-thin: rgb(255 255 255 / 0.64);
+  --mat-regular: rgb(255 255 255 / 0.76);
+  --mat-thick: rgb(255 255 255 / 0.9);
 
-  /* Reflejo interior superior: simula la luz que recoge un canto biselado */
-  --glass-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+  /* 2 · ÓPTICA · `saturate` es lo que hace que parezca cristal y no niebla */
+  --optic-thin: saturate(170%) blur(14px);
+  --optic-regular: saturate(180%) blur(24px);
+  --optic-thick: saturate(190%) blur(40px);
+
+  /* 3 · CANTO · luz arriba, peso abajo */
+  --edge-light: inset 0 1px 0 0 rgb(255 255 255 / 0.75);
+  --edge-dark: inset 0 -1px 0 0 rgb(16 20 38 / 0.05);
+  --edge-hairline: rgb(255 255 255 / 0.55);
+
+  /* Ambiente: intensidad de los halos de color del fondo */
+  --ambient-1: rgb(10 108 255 / 0.2);
+  --ambient-2: rgb(124 92 255 / 0.16);
+  --ambient-3: rgb(0 168 190 / 0.13);
+}
+
+/* -----------------------------------------------------------------------------
+   Modo oscuro
+   -----------------------------------------------------------------------------
+   No es el modo claro con los colores invertidos. En oscuro el cristal se tiñe
+   de negro —no de blanco— y el canto se ilumina desde arriba con mucha menos
+   fuerza, porque un reflejo intenso sobre fondo oscuro parece un borde roto.
+   Los rellenos de interacción pasan a aclarar en vez de oscurecer.
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-surface: #1c1c21;
+    --color-surface-subtle: #232329;
+    --color-surface-muted: #2a2a31;
+    --color-canvas: #121216;
+
+    --color-fill-subtle: rgb(255 255 255 / 0.05);
+    --color-fill: rgb(255 255 255 / 0.08);
+    --color-fill-strong: rgb(255 255 255 / 0.13);
+
+    --color-border: rgb(255 255 255 / 0.09);
+    --color-border-strong: rgb(255 255 255 / 0.18);
+    --color-ring: rgb(255 255 255 / 0.12);
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --color-inverse: #ececf0;
+    --color-inverse-ink: #1a1a1e;
+
+    /* Más oscuros que en claro: sobre ellos sigue yendo texto blanco, y el
+       fondo oscuro de la página no lo compensa. */
+    --color-brand-solid-from: #1f66d6;
+    --color-brand-solid-to: #0f4fb0;
+    --color-danger-solid-from: #c0182c;
+    --color-danger-solid-to: #93101f;
+
+    --color-ink: #f2f2f5;
+    --color-ink-secondary: #c3c3cc;
+    --color-ink-muted: #a3a3ae;
+    --color-ink-subtle: #90909b;
+
+    /* Los tonos 50 dejan de ser casi blancos: sobre fondo oscuro tienen que
+       ser velos del color, no rectángulos luminosos. */
+    --color-brand-50: rgb(43 127 255 / 0.16);
+    --color-brand-100: rgb(43 127 255 / 0.24);
+    --color-brand-200: rgb(43 127 255 / 0.34);
+    --color-brand-600: #4d93ff;
+    --color-brand-700: #7db0ff;
+
+    --color-success-50: rgb(18 138 69 / 0.18);
+    --color-success-200: rgb(18 138 69 / 0.34);
+    --color-success-600: #38c47b;
+    --color-success-700: #63d99a;
+
+    --color-warning-50: rgb(184 117 3 / 0.2);
+    --color-warning-200: rgb(184 117 3 / 0.36);
+    --color-warning-600: #e9a53a;
+    --color-warning-700: #f5bf63;
+
+    --color-danger-50: rgb(216 31 54 / 0.18);
+    --color-danger-200: rgb(216 31 54 / 0.34);
+    --color-danger-600: #ff6b7f;
+    --color-danger-700: #ff92a1;
+
+    --color-info-50: rgb(7 116 173 / 0.2);
+    --color-info-200: rgb(7 116 173 / 0.36);
+    --color-info-600: #46b0e0;
+    --color-info-700: #77c7ea;
+
+    --mat-ultrathin: rgb(28 28 34 / 0.5);
+    --mat-thin: rgb(28 28 34 / 0.64);
+    --mat-regular: rgb(26 26 32 / 0.76);
+    --mat-thick: rgb(24 24 30 / 0.9);
+
+    --edge-light: inset 0 1px 0 0 rgb(255 255 255 / 0.1);
+    --edge-dark: inset 0 -1px 0 0 rgb(0 0 0 / 0.3);
+    --edge-hairline: rgb(255 255 255 / 0.12);
+
+    --ambient-1: rgb(10 108 255 / 0.2);
+    --ambient-2: rgb(124 92 255 / 0.16);
+    --ambient-3: rgb(0 168 190 / 0.12);
+
+    --shadow-flat: 0 1px 1px rgb(0 0 0 / 0.3);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.34), 0 4px 12px -3px rgb(0 0 0 / 0.4);
+    --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.36), 0 14px 30px -8px rgb(0 0 0 / 0.5);
+    --shadow-floating: 0 4px 8px -2px rgb(0 0 0 / 0.4), 0 22px 44px -12px rgb(0 0 0 / 0.55);
+    --shadow-overlay: 0 8px 16px -4px rgb(0 0 0 / 0.45), 0 36px 72px -16px rgb(0 0 0 / 0.7);
+  }
 }
 
 /* =============================================================================
@@ -132,7 +296,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Activa las ligaduras y el kerning de SF Pro */
+  /* Activa ligaduras y kerning de SF Pro */
   font-feature-settings: "kern", "liga", "calt";
   /* §4 · nunca debe existir scroll horizontal global */
   overflow-x: hidden;
@@ -141,20 +305,45 @@ body {
 /* -----------------------------------------------------------------------------
    Ambiente
    -----------------------------------------------------------------------------
-   Un fondo plano no da nada que desenfocar: el cristal se ve gris. Estos dos
-   halos de color, muy tenues y fijos, son lo que el blur recoge y convierte en
-   profundidad. Sin ellos el efecto no existe.
+   Tres halos de color muy tenues. El desenfoque del cristal los recoge y los
+   convierte en profundidad; sin ellos el efecto no existe.
+
+   La deriva es lentísima (40 s) y de amplitud mínima: al mirar fijamente no se
+   percibe movimiento, pero el cristal deja de parecer una captura de pantalla.
    -------------------------------------------------------------------------- */
 body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(52rem 40rem at 12% -6%, var(--ambient-1), transparent 62%),
+    radial-gradient(44rem 36rem at 98% 8%, var(--ambient-2), transparent 60%),
+    radial-gradient(48rem 38rem at 58% 104%, var(--ambient-3), transparent 62%);
+  animation: ambient-drift 40s var(--ease-standard) infinite alternate;
+}
+
+/* Grano finísimo sobre el ambiente.
+   Los degradados amplios producen bandas visibles en pantallas de 8 bits; una
+   textura casi imperceptible las rompe y da al fondo un acabado de material. */
+body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(58rem 42rem at 8% -8%, rgb(10 108 255 / 0.10), transparent 62%),
-    radial-gradient(48rem 38rem at 102% 4%, rgb(120 92 255 / 0.08), transparent 60%),
-    radial-gradient(52rem 40rem at 62% 108%, rgb(7 116 173 / 0.07), transparent 62%);
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+@keyframes ambient-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
+  }
 }
 
 /* Jerarquía tipográfica: a mayor tamaño, menor tracking */
@@ -183,26 +372,26 @@ h3 {
 :focus-visible {
   outline: 2px solid var(--color-brand-600);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 }
 
 /* Scrollbars discretas en contenedores con scroll interno */
 .scroll-area {
   scrollbar-width: thin;
-  scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+  scrollbar-color: var(--color-fill-strong) transparent;
 }
 .scroll-area::-webkit-scrollbar {
   height: 9px;
   width: 9px;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background-color: rgb(0 0 0 / 0.16);
+  background-color: var(--color-fill-strong);
   border: 2px solid transparent;
   background-clip: content-box;
   border-radius: 999px;
 }
 .scroll-area::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(0 0 0 / 0.28);
+  background-color: var(--color-border-strong);
 }
 .scroll-area::-webkit-scrollbar-track {
   background: transparent;
@@ -210,32 +399,122 @@ h3 {
 
 /* =============================================================================
    Materiales
+   =============================================================================
+   `.liquid` aplica las cuatro señales a la vez. Es el único punto donde se
+   define el material: cambiarlo aquí cambia toda la aplicación, y una sección
+   nueva sólo tiene que usar la clase.
+
+   Modificadores de densidad: `.liquid-thin` (barras finas, pastillas) y
+   `.liquid-thick` (modales y menús, que deben leerse sobre cualquier fondo).
    ========================================================================== */
 
-/* Cristal estándar · sidebar, header, menús desplegables */
+/* Sin `position` propia: estas reglas no están en una capa y ganarían a las
+   utilidades de Tailwind, dejando sin efecto un `sticky` o un `absolute` del
+   marcado. El canto se ancla al contenedor porque quien use `.edge` ya está
+   posicionado (`sticky`, `absolute`) o lleva `relative` explícito. */
+.liquid {
+  background-color: var(--mat-regular);
+  -webkit-backdrop-filter: var(--optic-regular);
+  backdrop-filter: var(--optic-regular);
+  box-shadow: var(--edge-light), var(--edge-dark);
+}
+
+.liquid-thin {
+  background-color: var(--mat-thin);
+  -webkit-backdrop-filter: var(--optic-thin);
+  backdrop-filter: var(--optic-thin);
+}
+
+.liquid-thick {
+  background-color: var(--mat-thick);
+  -webkit-backdrop-filter: var(--optic-thick);
+  backdrop-filter: var(--optic-thick);
+}
+
+/* Canto luminoso de un píxel dibujado con degradado.
+   Un `border` plano se ve igual de opaco arriba que abajo; el canto de una
+   pieza de cristal recoge más luz en el borde superior. Se pinta en un
+   pseudo-elemento con máscara para que siga el radio del contenedor sin
+   ocupar espacio ni desplazar el contenido. */
+.edge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(160deg, var(--edge-hairline), transparent 42%, transparent 60%, var(--edge-hairline));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Compatibilidad: `.glass` y `.glass-strong` siguen existiendo como alias del
+   material nuevo para no romper nada que aún las use. */
 .glass {
-  background-color: var(--glass-tint);
-  -webkit-backdrop-filter: var(--glass-filter);
-  backdrop-filter: var(--glass-filter);
+  background-color: var(--mat-regular);
+  -webkit-backdrop-filter: var(--optic-regular);
+  backdrop-filter: var(--optic-regular);
+  box-shadow: var(--edge-light), var(--edge-dark);
 }
 
-/* Cristal denso · modales, drawers y avisos flotantes, donde debe leerse
-   contenido por encima de cualquier fondo */
 .glass-strong {
-  background-color: var(--glass-tint-strong);
-  -webkit-backdrop-filter: var(--glass-filter-strong);
-  backdrop-filter: var(--glass-filter-strong);
-  box-shadow: var(--glass-highlight);
+  background-color: var(--mat-thick);
+  -webkit-backdrop-filter: var(--optic-thick);
+  backdrop-filter: var(--optic-thick);
+  box-shadow: var(--edge-light), var(--edge-dark);
 }
 
-/* Reserva para navegadores sin backdrop-filter (Firefox con la opción
-   desactivada): sin esto el panel quedaría casi transparente e ilegible. */
+/* Reserva para navegadores sin `backdrop-filter`: sin ella el panel quedaría
+   casi transparente e ilegible. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid,
+  .liquid-thin,
   .glass {
-    background-color: rgb(255 255 255 / 0.96);
+    background-color: color-mix(in srgb, var(--color-surface) 96%, transparent);
   }
+  .liquid-thick,
   .glass-strong {
-    background-color: rgb(255 255 255 / 0.99);
+    background-color: var(--color-surface);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Material de tarjeta
+   -----------------------------------------------------------------------------
+   Las tarjetas del tablero son cristal FINO: dejan pasar el ambiente lo justo
+   para que la página tenga profundidad, con un velo denso (>80 %) que mantiene
+   el texto tan legible como sobre blanco.
+
+   El límite está en la densidad de datos, no en el gusto: una tarjeta de seis
+   cifras puede ser translúcida; una tabla de veinticinco filas no, porque el
+   fondo compite con cada renglón y el desenfoque se recalcula en cada scroll.
+   Por eso `.panel` —el material de tablas y formularios— sigue siendo opaco.
+   -------------------------------------------------------------------------- */
+.card-material {
+  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  backdrop-filter: saturate(160%) blur(16px);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--edge-light), var(--shadow-card);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card-material {
+    background-color: var(--color-surface);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .card-material {
+    background-color: var(--color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 
@@ -248,7 +527,21 @@ h3 {
 
 /* Realce interior para superficies elevadas sobre el fondo ambiental */
 .sheen {
-  box-shadow: var(--glass-highlight), var(--shadow-raised);
+  box-shadow: var(--edge-light), var(--shadow-raised);
+}
+
+/* Elevación al pasar el puntero, sólo donde hay puntero: en táctil el `hover`
+   se queda pegado tras el toque y la tarjeta parece rota. */
+@media (hover: hover) {
+  .lift {
+    transition:
+      transform 0.25s var(--ease-emphasis),
+      box-shadow 0.25s var(--ease-emphasis);
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised);
+  }
 }
 
 /* =============================================================================
@@ -277,7 +570,7 @@ h3 {
 
 @keyframes slide-in-right {
   from {
-    transform: translateX(100%);
+    transform: translateX(-100%);
   }
   to {
     transform: translateX(0);
@@ -287,7 +580,7 @@ h3 {
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.97);
+    transform: translateY(-6px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -308,21 +601,21 @@ h3 {
   animation: fade-in 0.2s var(--ease-standard);
 }
 .animate-slide-up {
-  animation: slide-up 0.32s var(--ease-emphasis);
+  animation: slide-up 0.34s var(--ease-emphasis);
 }
 .animate-slide-in-right {
   animation: slide-in-right 0.34s var(--ease-emphasis);
 }
 .animate-pop-in {
-  animation: pop-in 0.18s var(--ease-emphasis);
+  animation: pop-in 0.2s var(--ease-spring);
 }
 
 .skeleton {
   background-image: linear-gradient(
     90deg,
-    rgb(0 0 0 / 0.04) 25%,
-    rgb(0 0 0 / 0.07) 50%,
-    rgb(0 0 0 / 0.04) 75%
+    var(--color-fill-subtle) 25%,
+    var(--color-fill) 50%,
+    var(--color-fill-subtle) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s var(--ease-standard) infinite;
@@ -337,6 +630,9 @@ h3 {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  body::before {
+    animation: none;
+  }
 }
 
 /* =============================================================================
@@ -345,18 +641,26 @@ h3 {
 
 /* Con contraste alto la translucidez estorba: se sirve todo opaco */
 @media (prefers-contrast: more) {
+  .liquid,
+  .liquid-thin,
+  .liquid-thick,
   .glass,
   .glass-strong {
-    background-color: #ffffff;
+    background-color: var(--color-surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  body::before {
+  .edge::after {
+    display: none;
+  }
+  body::before,
+  body::after {
     display: none;
   }
   :root {
-    --color-border: rgb(0 0 0 / 0.24);
-    --color-border-strong: rgb(0 0 0 / 0.42);
+    --color-border: rgb(0 0 0 / 0.28);
+    --color-border-strong: rgb(0 0 0 / 0.45);
+    --color-ring: rgb(0 0 0 / 0.32);
   }
 }
 
@@ -368,12 +672,17 @@ h3 {
   .no-print {
     display: none !important;
   }
-  body::before {
+  body::before,
+  body::after {
     display: none;
   }
+  .liquid,
+  .liquid-thin,
+  .liquid-thick,
   .glass,
   .glass-strong {
     background: #fff !important;
+    box-shadow: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }

@@ -187,7 +187,7 @@ export function UserPermissionsModal({
                           className={cn(
                             "rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors",
                             state === value
-                              ? "bg-brand-600 text-white"
+                              ? "bg-brand-solid-to text-white"
                               : "text-ink-muted hover:bg-surface-muted",
                           )}
                         >

@@ -97,7 +97,7 @@ export function RankedBars({
           </div>
 
           {/* Pista: un paso bajo la superficie, recesiva */}
-          <div className="h-[8px] w-full rounded-r-[3px] bg-black/[0.045]">
+          <div className="h-[8px] w-full rounded-r-[3px] bg-fill-subtle">
             <div
               className="h-full rounded-r-[3px] transition-[width] duration-500 ease-[var(--ease-emphasis)] group-hover:brightness-110"
               style={{
@@ -157,7 +157,7 @@ export function SegmentedBar({ segments }: { segments: BarSegment[] }) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex h-[10px] w-full gap-[2px] overflow-hidden rounded-[5px] bg-black/[0.045]">
+      <div className="flex h-[10px] w-full gap-[2px] overflow-hidden rounded-xs bg-fill-subtle">
         {visible.map((segment) => (
           <div
             key={segment.key}
@@ -271,10 +271,10 @@ export function ChartEmptyState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
       <div aria-hidden className="flex items-end gap-1 opacity-40">
-        <span className="h-3 w-1.5 rounded-t-[2px] bg-black/20" />
-        <span className="h-5 w-1.5 rounded-t-[2px] bg-black/20" />
-        <span className="h-2 w-1.5 rounded-t-[2px] bg-black/20" />
-        <span className="h-4 w-1.5 rounded-t-[2px] bg-black/20" />
+        <span className="h-3 w-1.5 rounded-t-[2px] bg-fill-strong" />
+        <span className="h-5 w-1.5 rounded-t-[2px] bg-fill-strong" />
+        <span className="h-2 w-1.5 rounded-t-[2px] bg-fill-strong" />
+        <span className="h-4 w-1.5 rounded-t-[2px] bg-fill-strong" />
       </div>
       <p className="max-w-[17rem] text-[11.5px] leading-relaxed text-ink-muted">{message}</p>
     </div>

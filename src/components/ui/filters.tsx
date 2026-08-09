@@ -120,7 +120,7 @@ export function FilterSelect({
       <select
         value={value}
         onChange={(event) => setParams({ [paramName]: event.target.value || null })}
-        className="h-10 w-full rounded-[10px] bg-surface px-3 text-base text-ink ring-1 ring-inset ring-black/[0.10] transition-shadow hover:ring-black/[0.16] focus:ring-2 focus:ring-brand-500 focus:outline-none sm:text-[13px]"
+        className="h-10 w-full rounded-md bg-surface px-3 text-base text-ink ring-1 ring-inset ring-ring transition-shadow hover:ring-border-strong focus:ring-2 focus:ring-brand-500 focus:outline-none sm:text-[13px]"
       >
         <option value="">{allLabel}</option>
         {options.map((option) => (
@@ -152,7 +152,7 @@ export function FilterDate({
         type="date"
         value={value}
         onChange={(event) => setParams({ [paramName]: event.target.value || null })}
-        className="h-10 w-full rounded-[10px] bg-surface px-3 text-base text-ink ring-1 ring-inset ring-black/[0.10] transition-shadow hover:ring-black/[0.16] focus:ring-2 focus:ring-brand-500 focus:outline-none sm:text-[13px]"
+        className="h-10 w-full rounded-md bg-surface px-3 text-base text-ink ring-1 ring-inset ring-ring transition-shadow hover:ring-border-strong focus:ring-2 focus:ring-brand-500 focus:outline-none sm:text-[13px]"
       />
     </label>
   );
@@ -198,7 +198,7 @@ export function FilterBar({
             >
               Filtros
               {activeCount > 0 && (
-                <span className="ml-1 rounded-full bg-brand-600 px-1.5 text-[11px] text-white tabular-nums">
+                <span className="ml-1 rounded-full bg-brand-solid-to px-1.5 text-[11px] text-white tabular-nums">
                   {activeCount}
                 </span>
               )}

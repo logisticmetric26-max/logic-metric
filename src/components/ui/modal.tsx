@@ -78,7 +78,7 @@ export function Modal({
       aria-labelledby="modal-title"
     >
       <div
-        className="animate-fade-in absolute inset-0 bg-ink/25 backdrop-blur-[3px]"
+        className="animate-fade-in absolute inset-0 bg-scrim backdrop-blur-[3px]"
         onClick={busy ? undefined : onClose}
         aria-hidden
       />
@@ -89,7 +89,7 @@ export function Modal({
         className={cn(
           "glass-strong animate-slide-up relative flex max-h-[92dvh] w-full flex-col",
           "rounded-t-[20px] border border-border shadow-[var(--shadow-overlay)] outline-none",
-          "sm:max-h-[85dvh] sm:rounded-[18px]",
+          "sm:max-h-[85dvh] sm:rounded-lg",
           SIZES[size],
         )}
       >
@@ -108,7 +108,7 @@ export function Modal({
             onClick={onClose}
             disabled={busy}
             aria-label="Cerrar"
-            className="-m-1 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-black/[0.05] hover:text-ink disabled:opacity-50"
+            className="-m-1 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-fill hover:text-ink disabled:opacity-50"
           >
             <X className="size-5" aria-hidden />
           </button>
@@ -119,7 +119,7 @@ export function Modal({
         </div>
 
         {footer && (
-          <div className="safe-bottom flex flex-col-reverse gap-2 border-t border-border bg-black/[0.015] px-4 py-3.5 sm:flex-row sm:justify-end sm:px-5">
+          <div className="safe-bottom flex flex-col-reverse gap-2 border-t border-border bg-surface-subtle px-4 py-3.5 sm:flex-row sm:justify-end sm:px-5">
             {footer}
           </div>
         )}
@@ -203,7 +203,7 @@ export function Drawer({
   return createPortal(
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
       <div
-        className="animate-fade-in absolute inset-0 bg-ink/25 backdrop-blur-[3px]"
+        className="animate-fade-in absolute inset-0 bg-scrim backdrop-blur-[3px]"
         onClick={onClose}
         aria-hidden
       />
@@ -214,7 +214,7 @@ export function Drawer({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="-m-1 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-black/[0.05] hover:text-ink"
+            className="-m-1 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-fill hover:text-ink"
           >
             <X className="size-5" aria-hidden />
           </button>

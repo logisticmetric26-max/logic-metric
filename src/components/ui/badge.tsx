@@ -11,7 +11,7 @@ import type {
 type Tone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
 
 const TONES: Record<Tone, string> = {
-  neutral: "bg-black/[0.045] text-ink-secondary ring-black/[0.06]",
+  neutral: "bg-fill-subtle text-ink-secondary ring-border",
   brand: "bg-brand-50 text-brand-700 ring-brand-200",
   success: "bg-success-50 text-success-700 ring-success-200",
   warning: "bg-warning-50 text-warning-700 ring-warning-200",

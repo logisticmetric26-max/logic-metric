@@ -8,11 +8,16 @@ import { cn } from "@/lib/utils";
 /**
  * Navegación secundaria dentro de una sección (§16).
  *
- * Son enlaces reales, no estado local: cada subsección tiene su URL, por lo que
- * se puede compartir, marcar como favorita y recargar sin perder el contexto.
+ * Son enlaces reales, no estado local: cada subsección tiene su URL, así que se
+ * puede compartir, marcar como favorita y recargar sin perder el contexto.
  *
- * En móvil el grupo se desplaza horizontalmente dentro de su contenedor, sin
- * provocar scroll horizontal en la página.
+ * Forma de control segmentado sobre cristal, no de pestañas subrayadas: el
+ * grupo se lee como UNA pieza con una posición seleccionada, que es lo que es.
+ * La pastilla activa es la única superficie sólida del grupo, y ese contraste
+ * de material —no sólo de color— hace visible la selección incluso de reojo.
+ *
+ * En móvil el grupo se desplaza en horizontal dentro de su contenedor, sin
+ * provocar scroll horizontal en la página (§4).
  */
 
 export interface TabItem {
@@ -28,32 +33,34 @@ export function Tabs({ items, className }: { items: TabItem[]; className?: strin
   const pathname = usePathname();
 
   return (
-    <nav className={cn("border-b border-border", className)} aria-label="Secciones">
-      <div className="scroll-area -mb-px flex gap-1 overflow-x-auto">
-        {items.map((item) => {
-          const active = item.exact
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    <nav className={cn("min-w-0", className)} aria-label="Secciones">
+      <div className="scroll-area -mx-1 overflow-x-auto px-1 pb-1">
+        <div className="liquid-thin edge relative inline-flex min-w-full gap-1 rounded-xl p-1 shadow-[var(--shadow-flat)] sm:min-w-0">
+          {items.map((item) => {
+            const active = item.exact
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-2.5 text-[13px] font-medium whitespace-nowrap",
-                "transition-all duration-200 ease-[var(--ease-standard)]",
-                active
-                  ? "border-brand-600 text-brand-700"
-                  : "border-transparent text-ink-muted hover:border-black/15 hover:text-ink",
-              )}
-            >
-              {item.icon}
-              {item.label}
-              {item.badge}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center gap-2 rounded-md px-3.5 py-2 text-[13px] font-medium whitespace-nowrap",
+                  "transition-all duration-200 ease-[var(--ease-standard)]",
+                  active
+                    ? "bg-surface text-ink shadow-[var(--shadow-card)] ring-1 ring-border"
+                    : "text-ink-muted hover:bg-fill-subtle hover:text-ink-secondary",
+                )}
+              >
+                {item.icon}
+                {item.label}
+                {item.badge}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

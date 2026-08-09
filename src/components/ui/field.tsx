@@ -10,21 +10,21 @@ import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CONTROL_BASE = cn(
-  "w-full rounded-[10px] bg-surface px-3 text-ink",
+  "w-full rounded-md bg-surface px-3 text-ink",
   "ring-1 ring-inset",
   "placeholder:text-ink-subtle",
   "transition-[box-shadow,background-color] duration-200 ease-[var(--ease-standard)]",
   // El foco se marca con un halo suave, no con un borde duro
   "focus:outline-none",
-  "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted disabled:ring-black/[0.05]",
+  "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted disabled:ring-border",
   // 16px en móvil evita que iOS haga zoom al enfocar el campo
   "text-base sm:text-[13px]",
 );
 
 const CONTROL_TONE = {
   normal: cn(
-    "ring-black/[0.10] shadow-[inset_0_1px_2px_rgb(15_18_34/0.04)]",
-    "hover:ring-black/[0.16]",
+    "ring-ring shadow-[inset_0_1px_2px_rgb(15_18_34/0.04)]",
+    "hover:ring-border-strong",
     "focus:ring-2 focus:ring-brand-500 focus:shadow-[0_0_0_4px_rgb(10_108_255/0.12)]",
   ),
   error: cn(
@@ -184,8 +184,8 @@ export function Checkbox({
     <label
       htmlFor={inputId}
       className={cn(
-        "flex cursor-pointer items-start gap-2.5 rounded-[10px] p-2 -m-2",
-        "transition-colors hover:bg-black/[0.035]",
+        "flex cursor-pointer items-start gap-2.5 rounded-md p-2 -m-2",
+        "transition-colors hover:bg-fill-subtle",
         className,
       )}
     >

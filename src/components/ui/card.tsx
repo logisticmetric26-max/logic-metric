@@ -4,16 +4,26 @@ import { cn } from "@/lib/utils";
 /**
  * Superficie de contenido.
  *
- * Sólida a propósito: es el material sobre el que se leen tablas, fichas y
- * formularios. El cristal se reserva al cromo — sobre datos densos entorpece la
- * lectura y encarece el scroll.
+ * Cristal fino: un velo denso sobre el ambiente, que deja ver el color del
+ * fondo sin restar un ápice de legibilidad al texto. Es lo que hace que la
+ * página tenga profundidad en lugar de ser una sucesión de rectángulos blancos.
+ *
+ * `solid` la devuelve a superficie opaca. Es lo correcto cuando dentro hay una
+ * tabla larga: sobre veinticinco filas el fondo compite con cada renglón y el
+ * desenfoque se recalcula en cada scroll.
  */
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function Card({
+  solid,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { solid?: boolean }) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border bg-surface",
-        "shadow-[var(--shadow-card)]",
+        "relative overflow-hidden rounded-lg",
+        solid
+          ? "border border-border bg-surface shadow-[var(--shadow-card)]"
+          : "card-material edge",
         className,
       )}
       {...props}
@@ -101,9 +111,9 @@ export function StatTile({
   return (
     <div
       className={cn(
-        "group flex h-full flex-col gap-1 rounded-xl border border-border bg-surface px-3.5 py-3",
-        "shadow-[var(--shadow-card)] transition-colors duration-200",
-        "hover:border-black/[0.10]",
+        "group relative flex h-full flex-col gap-1 rounded-md px-3.5 py-3",
+        "card-material edge transition-colors duration-200",
+        "hover:border-border-strong",
       )}
     >
       <span className="flex items-center gap-1.5">
@@ -144,7 +154,7 @@ export function StatCard({
   loading?: boolean;
 }) {
   const tones = {
-    neutral: { value: "text-ink", chip: "bg-black/[0.05] text-ink-muted" },
+    neutral: { value: "text-ink", chip: "bg-fill text-ink-muted" },
     brand: { value: "text-brand-700", chip: "bg-brand-50 text-brand-600" },
     success: { value: "text-success-700", chip: "bg-success-50 text-success-600" },
     warning: { value: "text-warning-700", chip: "bg-warning-50 text-warning-600" },
@@ -156,10 +166,9 @@ export function StatCard({
     <div
       className={cn(
         "group relative flex h-full flex-col justify-between gap-4 overflow-hidden",
-        "rounded-2xl border border-border bg-surface p-5",
-        "shadow-[var(--shadow-card)]",
+        "card-material edge rounded-lg p-5",
         "transition-all duration-300 ease-[var(--ease-emphasis)]",
-        "hover:-translate-y-0.5 hover:border-black/[0.10] hover:shadow-[var(--shadow-raised)]",
+        "hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-raised)]",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -169,7 +178,7 @@ export function StatCard({
         {icon && (
           <span
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-[10px]",
+              "flex size-8 shrink-0 items-center justify-center rounded-md",
               tones[tone].chip,
             )}
           >

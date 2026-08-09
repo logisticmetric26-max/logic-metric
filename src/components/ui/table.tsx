@@ -20,9 +20,17 @@ export function TableScroller({ children, className }: { children: ReactNode; cl
   );
 }
 
+/**
+ * La tabla trae su propio material opaco.
+ *
+ * Así una tarjeta translúcida puede contener una tabla sin que el fondo
+ * ambiental se cuele entre veinticinco renglones: el cristal se queda en el
+ * marco y los datos se leen sobre superficie sólida. Evita además tener que
+ * acordarse de marcar como opaca cada tarjeta que contenga una tabla.
+ */
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <table className={cn("w-full border-collapse text-sm", className)}>{children}</table>
+    <table className={cn("w-full border-collapse bg-surface text-sm", className)}>{children}</table>
   );
 }
 
@@ -79,7 +87,7 @@ export function TR({
     <tr
       onClick={onClick}
       className={cn(
-        "transition-colors duration-150 hover:bg-black/[0.022]",
+        "transition-colors duration-150 hover:bg-fill-subtle",
         onClick && "cursor-pointer",
         className,
       )}
@@ -137,7 +145,7 @@ export function RowCard({
       onClick={onClick}
       className={cn(
         "px-4 py-4 transition-colors",
-        onClick && "cursor-pointer active:bg-black/[0.03]",
+        onClick && "cursor-pointer active:bg-fill-subtle",
       )}
     >
       <div className="flex items-start justify-between gap-3">

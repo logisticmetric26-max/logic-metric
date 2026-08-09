@@ -124,7 +124,7 @@ export function ServiceWorkerManager() {
               type="button"
               onClick={dismissInstall}
               aria-label="Descartar"
-              className="rounded p-1 text-white/70 hover:text-white"
+              className="rounded-xs p-1 text-inverse-ink/70 transition-colors hover:text-inverse-ink"
             >
               <X className="size-4" aria-hidden />
             </button>
@@ -149,7 +149,7 @@ function Banner({
   return (
     <div
       role="status"
-      className="safe-bottom animate-slide-up fixed inset-x-0 bottom-0 z-[70] flex items-center gap-3 bg-ink px-4 py-3 text-sm text-white sm:inset-x-auto sm:right-4 sm:bottom-4 sm:rounded-xl sm:shadow-[var(--shadow-overlay)]"
+      className="safe-bottom animate-slide-up fixed inset-x-0 bottom-0 z-[70] flex items-center gap-3 bg-inverse px-4 py-3 text-sm text-inverse-ink sm:inset-x-auto sm:right-4 sm:bottom-4 sm:rounded-xl sm:shadow-[var(--shadow-overlay)]"
     >
       {icon}
       <p className="min-w-0 flex-1">{message}</p>
