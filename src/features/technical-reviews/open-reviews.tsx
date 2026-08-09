@@ -43,8 +43,6 @@ export function OpenReviews({
   activeFilterCount,
 }: {
   events: (CloseReviewEvent & {
-    driver_name: string;
-    terminal_name: string;
     created_by_name: string | null;
   })[];
   total: number;

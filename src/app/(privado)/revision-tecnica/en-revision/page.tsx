@@ -36,7 +36,7 @@ export default async function EnRevisionPage({
   let query = supabase
     .from("technical_review_events_view")
     .select(
-      "id, internal_number, ppu, driver_name, terminal_name, departure_at, created_by_name",
+      "id, fleet_id, internal_number, ppu, terminal_id, terminal_name, driver_name, departure_at, created_by_name",
       { count: "planned" },
     )
     .eq("status", "OPEN")

@@ -42,7 +42,14 @@ interface AnalysisResponse {
 
 export type CloseReviewEvent = Pick<
   TechnicalReviewEventViewRow,
-  "id" | "internal_number" | "ppu" | "departure_at"
+  | "id"
+  | "fleet_id"
+  | "internal_number"
+  | "ppu"
+  | "terminal_id"
+  | "terminal_name"
+  | "driver_name"
+  | "departure_at"
 >;
 
 /**
