@@ -39,6 +39,11 @@
    decoración, son parte del efecto.
    ========================================================================== */
 
+/* Interfaz de tono claro, siempre. Es una herramienta de trabajo que se usa en
+   oficina y en terminal, junto a documentos impresos y pantallas de terceros:
+   un tema que cambia solo según la configuración del equipo rompe esa
+   consistencia y no aporta nada operativo. */
+
 @theme {
   /* --- Superficies ------------------------------------------------------- */
   --color-surface: #ffffff;
@@ -184,95 +189,6 @@
   --ambient-1: rgb(10 108 255 / 0.2);
   --ambient-2: rgb(124 92 255 / 0.16);
   --ambient-3: rgb(0 168 190 / 0.13);
-}
-
-/* -----------------------------------------------------------------------------
-   Modo oscuro
-   -----------------------------------------------------------------------------
-   No es el modo claro con los colores invertidos. En oscuro el cristal se tiñe
-   de negro —no de blanco— y el canto se ilumina desde arriba con mucha menos
-   fuerza, porque un reflejo intenso sobre fondo oscuro parece un borde roto.
-   Los rellenos de interacción pasan a aclarar en vez de oscurecer.
-   -------------------------------------------------------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-
-    --color-surface: #1c1c21;
-    --color-surface-subtle: #232329;
-    --color-surface-muted: #2a2a31;
-    --color-canvas: #121216;
-
-    --color-fill-subtle: rgb(255 255 255 / 0.05);
-    --color-fill: rgb(255 255 255 / 0.08);
-    --color-fill-strong: rgb(255 255 255 / 0.13);
-
-    --color-border: rgb(255 255 255 / 0.09);
-    --color-border-strong: rgb(255 255 255 / 0.18);
-    --color-ring: rgb(255 255 255 / 0.12);
-    --color-scrim: rgb(0 0 0 / 0.6);
-    --color-inverse: #ececf0;
-    --color-inverse-ink: #1a1a1e;
-
-    /* Más oscuros que en claro: sobre ellos sigue yendo texto blanco, y el
-       fondo oscuro de la página no lo compensa. */
-    --color-brand-solid-from: #1f66d6;
-    --color-brand-solid-to: #0f4fb0;
-    --color-danger-solid-from: #c0182c;
-    --color-danger-solid-to: #93101f;
-
-    --color-ink: #f2f2f5;
-    --color-ink-secondary: #c3c3cc;
-    --color-ink-muted: #a3a3ae;
-    --color-ink-subtle: #90909b;
-
-    /* Los tonos 50 dejan de ser casi blancos: sobre fondo oscuro tienen que
-       ser velos del color, no rectángulos luminosos. */
-    --color-brand-50: rgb(43 127 255 / 0.16);
-    --color-brand-100: rgb(43 127 255 / 0.24);
-    --color-brand-200: rgb(43 127 255 / 0.34);
-    --color-brand-600: #4d93ff;
-    --color-brand-700: #7db0ff;
-
-    --color-success-50: rgb(18 138 69 / 0.18);
-    --color-success-200: rgb(18 138 69 / 0.34);
-    --color-success-600: #38c47b;
-    --color-success-700: #63d99a;
-
-    --color-warning-50: rgb(184 117 3 / 0.2);
-    --color-warning-200: rgb(184 117 3 / 0.36);
-    --color-warning-600: #e9a53a;
-    --color-warning-700: #f5bf63;
-
-    --color-danger-50: rgb(216 31 54 / 0.18);
-    --color-danger-200: rgb(216 31 54 / 0.34);
-    --color-danger-600: #ff6b7f;
-    --color-danger-700: #ff92a1;
-
-    --color-info-50: rgb(7 116 173 / 0.2);
-    --color-info-200: rgb(7 116 173 / 0.36);
-    --color-info-600: #46b0e0;
-    --color-info-700: #77c7ea;
-
-    --mat-ultrathin: rgb(28 28 34 / 0.5);
-    --mat-thin: rgb(28 28 34 / 0.64);
-    --mat-regular: rgb(26 26 32 / 0.76);
-    --mat-thick: rgb(24 24 30 / 0.9);
-
-    --edge-light: inset 0 1px 0 0 rgb(255 255 255 / 0.1);
-    --edge-dark: inset 0 -1px 0 0 rgb(0 0 0 / 0.3);
-    --edge-hairline: rgb(255 255 255 / 0.12);
-
-    --ambient-1: rgb(10 108 255 / 0.2);
-    --ambient-2: rgb(124 92 255 / 0.16);
-    --ambient-3: rgb(0 168 190 / 0.12);
-
-    --shadow-flat: 0 1px 1px rgb(0 0 0 / 0.3);
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.34), 0 4px 12px -3px rgb(0 0 0 / 0.4);
-    --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.36), 0 14px 30px -8px rgb(0 0 0 / 0.5);
-    --shadow-floating: 0 4px 8px -2px rgb(0 0 0 / 0.4), 0 22px 44px -12px rgb(0 0 0 / 0.55);
-    --shadow-overlay: 0 8px 16px -4px rgb(0 0 0 / 0.45), 0 36px 72px -16px rgb(0 0 0 / 0.7);
-  }
 }
 
 /* =============================================================================
