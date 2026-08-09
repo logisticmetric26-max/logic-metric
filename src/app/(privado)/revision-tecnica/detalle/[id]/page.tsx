@@ -47,7 +47,7 @@ export default async function DetalleRevisionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePermission(PERMISSIONS.technicalReview.view);
+  const context = await requirePermission(PERMISSIONS.technicalReview.view);
   const { id } = await params;
 
   const supabase = await createClient();
@@ -82,6 +82,9 @@ export default async function DetalleRevisionPage({
   const backHref =
     event.result === "REJECTED" ? "/revision-tecnica/rechazados" : "/revision-tecnica/historial";
   const documentCount = documents?.length ?? 0;
+  const canViewDocuments = context.permissions.includes(
+    PERMISSIONS.technicalReviewDocuments.view,
+  );
   const rejectionCount = rejections?.length ?? 0;
   const approved = event.result === "APPROVED";
 
@@ -146,9 +149,11 @@ export default async function DetalleRevisionPage({
 
             <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
               <ReviewStatusBadge status={event.status} result={event.result} />
-              <Badge tone="neutral" icon={<FileText className="size-3" aria-hidden />}>
-                {documentCount} documento{documentCount === 1 ? "" : "s"}
-              </Badge>
+              {canViewDocuments && (
+                <Badge tone="neutral" icon={<FileText className="size-3" aria-hidden />}>
+                  {documentCount} documento{documentCount === 1 ? "" : "s"}
+                </Badge>
+              )}
               {!approved && (
                 <Badge tone="danger">
                   {rejectionCount} rechazo{rejectionCount === 1 ? "" : "s"}
@@ -277,11 +282,19 @@ export default async function DetalleRevisionPage({
           description="Archivos privados con descarga temporal y segura."
           actions={
             <Badge tone="neutral">
-              {documentCount} archivo{documentCount === 1 ? "" : "s"}
+              {canViewDocuments
+                ? `${documentCount} archivo${documentCount === 1 ? "" : "s"}`
+                : "Acceso restringido"}
             </Badge>
           }
         />
-        {documents && documents.length > 0 ? (
+        {!canViewDocuments ? (
+          <EmptyState
+            title="Documentos restringidos"
+            description="Su rol permite ver el proceso, pero no descargar sus documentos adjuntos."
+            className="py-10"
+          />
+        ) : documents && documents.length > 0 ? (
           <ul className="grid gap-3 p-3 sm:p-4 lg:grid-cols-2">
             {documents.map((document) => (
               <li

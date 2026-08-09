@@ -157,8 +157,104 @@ begin
   v_perms := public.current_user_context() -> 'permissions';
   perform tests.assert(not (v_perms ? 'technical_review.view'),
     'El contexto de usuario no expone un permiso revocado');
-  perform tests.assert(v_perms ? 'technical_review.delete',
-    'El contexto de usuario incluye el permiso concedido por override');
+  perform tests.assert(not (v_perms ? 'technical_review.delete'),
+    'Al revocar la vista, eliminar deja de ser efectivo porque depende de ella');
+
+  perform tests.become_owner();
+end;
+$$;
+
+-- =============================================================================
+-- El catálogo contiene sólo capacidades reales y las dependencias son efectivas
+-- =============================================================================
+do $$
+declare
+  v_term  uuid := tests.create_terminal('Terminal Dependencias');
+  v_role  uuid := tests.create_role('Cierre Incompleto', array['technical_review.close']);
+  v_user  uuid := tests.create_user(tests.next_rut(), 'Usuario Dependencias', v_term, v_role);
+  v_count bigint;
+begin
+  select count(*) into v_count from public.permissions;
+  perform tests.assert_equals(v_count, 24::bigint, 'El catálogo tiene exactamente 24 capacidades implementadas');
+  perform tests.assert(not exists (
+    select 1 from public.permissions where code in ('technical_review.edit', 'audit.view')
+  ), 'No se publican permisos sin una operación independiente');
+
+  perform tests.authenticate_as(v_user);
+  perform tests.assert(not app.has_permission('technical_review.close'),
+    'Cerrar no es efectivo si faltan sus permisos requeridos');
+
+  perform tests.become_owner();
+  insert into public.role_permissions (role_id, permission_code) values
+    (v_role, 'technical_review.view'),
+    (v_role, 'technical_review_documents.view'),
+    (v_role, 'technical_review_documents.upload');
+
+  perform tests.authenticate_as(v_user);
+  perform tests.assert(app.has_permission('technical_review.close'),
+    'Cerrar se vuelve efectivo al completar todos sus requisitos');
+
+  perform tests.become_owner();
+end;
+$$;
+
+-- =============================================================================
+-- Editar datos, suspender y administrar accesos son permisos independientes
+-- =============================================================================
+do $$
+declare
+  v_term         uuid := tests.create_terminal('Terminal Separación Usuarios');
+  v_role_target  uuid := tests.create_role('Rol Objetivo Separación', array['technical_review.view']);
+  v_role_other   uuid := tests.create_role('Rol Alternativo Separación', array['fleet.view']);
+  v_role_edit    uuid := tests.create_role('Editor Datos Separación', array['users.view', 'users.edit']);
+  v_role_suspend uuid := tests.create_role('Suspensor Separación', array['users.view', 'users.suspend']);
+  v_role_access  uuid := tests.create_role('Gestor Acceso Separación', array['users.view', 'access.manage']);
+  v_target       uuid := tests.create_user(tests.next_rut(), 'Usuario Objetivo Separación', v_term, v_role_target);
+  v_editor       uuid := tests.create_user(tests.next_rut(), 'Editor Datos Separación', v_term, v_role_edit);
+  v_suspensor    uuid := tests.create_user(tests.next_rut(), 'Suspensor Separación', v_term, v_role_suspend);
+  v_gestor       uuid := tests.create_user(tests.next_rut(), 'Gestor Acceso Separación', v_term, v_role_access);
+  v_value        text;
+  v_role_value   uuid;
+begin
+  perform tests.authenticate_as(v_editor);
+  update public.profiles set full_name = 'Nombre Corregido Separación' where id = v_target;
+  select full_name into v_value from public.profiles where id = v_target;
+  perform tests.assert_equals(v_value, 'Nombre Corregido Separación',
+    'users.edit modifica nombre y cargo descriptivo');
+  perform tests.assert_raises(
+    format('update public.profiles set status = %L where id = %L', 'SUSPENDED', v_target),
+    'PERMISSION_DENIED:users.suspend',
+    'users.edit no permite suspender'
+  );
+  perform tests.assert_raises(
+    format('update public.profiles set role_id = %L where id = %L', v_role_other, v_target),
+    'PERMISSION_DENIED:access.manage',
+    'users.edit no permite cambiar el rol de permisos'
+  );
+
+  perform tests.become_owner();
+  perform tests.authenticate_as(v_suspensor);
+  update public.profiles set status = 'SUSPENDED' where id = v_target;
+  select status into v_value from public.profiles where id = v_target;
+  perform tests.assert_equals(v_value, 'SUSPENDED', 'users.suspend cambia únicamente el estado');
+  perform tests.assert_raises(
+    format('update public.profiles set full_name = %L where id = %L', 'Cambio Indebido', v_target),
+    'PERMISSION_DENIED:users.edit',
+    'users.suspend no permite editar datos'
+  );
+
+  perform tests.become_owner();
+  update public.profiles set status = 'ACTIVE' where id = v_target;
+  perform tests.authenticate_as(v_gestor);
+  update public.profiles set role_id = v_role_other where id = v_target;
+  select role_id into v_role_value from public.profiles where id = v_target;
+  perform tests.assert_equals(v_role_value, v_role_other,
+    'access.manage cambia el rol de permisos');
+  perform tests.assert_raises(
+    format('update public.profiles set full_name = %L where id = %L', 'Cambio Indebido', v_target),
+    'PERMISSION_DENIED:users.edit',
+    'access.manage no permite editar nombre o cargo'
+  );
 
   perform tests.become_owner();
 end;
@@ -187,6 +283,10 @@ begin
   perform tests.attach_document(v_event, 'REJECTION_REPORT');
   perform public.close_technical_review(v_event, 'REJECTED', 'GUIA-AUD');
 
+  -- La bitácora no tiene aún una pantalla de consulta: se verifica como owner,
+  -- sin publicar un permiso que la interfaz no implementa.
+  perform tests.become_owner();
+
   select count(*) into v_count from public.audit_logs
   where action = 'INSERT_FLEET' and entity_id = v_bus::text;
   perform tests.assert_equals(v_count, 1::bigint, 'Se audita la creación de un bus');
@@ -203,6 +303,8 @@ begin
   select count(*) into v_count from public.audit_logs
   where entity_id = v_event::text and user_id = v_user and actor_rut = v_rut;
   perform tests.assert(v_count > 0, 'La bitácora identifica al autor de la acción');
+
+  perform tests.authenticate_as(v_user);
 
   -- §57 · append-only: no se puede reescribir ni borrar.
   -- La barrera es doble: `authenticated` no tiene siquiera el privilegio de

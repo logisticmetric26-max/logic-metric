@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireActiveUser } from "@/lib/auth/session";
 import { authIdentifierForRut } from "@/lib/auth/rut-identity";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import {
+  PERMISSIONS,
+  isPermissionCode,
+  missingPermissionDependencies,
+  type PermissionCode,
+} from "@/lib/auth/permissions";
 import {
   actionError,
   actionSuccess,
@@ -14,6 +19,7 @@ import {
   type ActionResult,
 } from "@/lib/errors";
 import { toFieldErrors } from "@/schemas/common";
+import type { ProfileRow } from "@/types/database.types";
 import {
   createUserSchema,
   permissionOverridesSchema,
@@ -44,6 +50,25 @@ const ACCESS_PATH = "/acceso";
 /** Terminales adicionales enviados como múltiples campos `additional_terminals`. */
 function readTerminalList(formData: FormData): string[] {
   return formData.getAll("additional_terminals").map(String);
+}
+
+function validatePermissionCodes(values: readonly string[]):
+  | { ok: true; codes: PermissionCode[] }
+  | { ok: false; error: string } {
+  const unique = [...new Set(values)];
+  if (unique.some((code) => !isPermissionCode(code))) {
+    return { ok: false, error: "La selección contiene un permiso que no existe." };
+  }
+
+  const codes = unique as PermissionCode[];
+  if (missingPermissionDependencies(new Set(codes)).length > 0) {
+    return {
+      ok: false,
+      error: "La selección está incompleta. Incluya los accesos requeridos por cada capacidad.",
+    };
+  }
+
+  return { ok: true, codes };
 }
 
 /**
@@ -100,8 +125,11 @@ function describeAuthAdminError(context: string, error: unknown): string {
 export async function createUserAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const context = await requireActiveUser();
 
-  if (!context.permissions.includes(PERMISSIONS.users.create)) {
-    return actionError("No tiene permisos para crear usuarios.");
+  if (
+    !context.permissions.includes(PERMISSIONS.users.create) ||
+    !context.permissions.includes(PERMISSIONS.access.manage)
+  ) {
+    return actionError("No tiene permisos para crear usuarios y asignarles acceso.");
   }
 
   const parsed = createUserSchema.safeParse({
@@ -210,19 +238,51 @@ export async function createUserAction(formData: FormData): Promise<ActionResult
 
 export async function updateUserAction(formData: FormData): Promise<ActionResult> {
   const context = await requireActiveUser();
+  const canEditProfile = context.permissions.includes(PERMISSIONS.users.edit);
+  const canManageAccess = context.permissions.includes(PERMISSIONS.access.manage);
 
-  if (!context.permissions.includes(PERMISSIONS.users.edit)) {
+  if (!canEditProfile && !canManageAccess) {
     return actionError("No tiene permisos para editar usuarios.");
   }
 
+  const idParsed = updateUserSchema.shape.id.safeParse(formData.get("id"));
+  if (!idParsed.success) return actionError("El usuario indicado no es válido.");
+
+  if (idParsed.data === context.profile.id) {
+    return actionError("No puede modificar su propia cuenta desde esta sección.");
+  }
+
+  const supabase = await createClient();
+  const [{ data: target, error: targetError }, { data: currentTerminals, error: terminalsError }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, job_title, primary_terminal_id, role_id, has_global_access")
+        .eq("id", idParsed.data)
+        .maybeSingle(),
+      supabase.from("user_terminal_access").select("terminal_id").eq("user_id", idParsed.data),
+    ]);
+
+  if (targetError) return actionError(reportError("updateUser.target", targetError));
+  if (terminalsError) return actionError(reportError("updateUser.terminals", terminalsError));
+  if (!target) return actionError("No tiene acceso a este usuario.");
+
   const parsed = updateUserSchema.safeParse({
-    id: formData.get("id"),
-    full_name: formData.get("full_name"),
-    job_title: formData.get("job_title"),
-    primary_terminal_id: formData.get("primary_terminal_id"),
-    role_id: formData.get("role_id"),
-    has_global_access: formData.get("has_global_access"),
-    additional_terminals: readTerminalList(formData),
+    id: idParsed.data,
+    full_name: canEditProfile ? formData.get("full_name") : target.full_name,
+    job_title: canEditProfile ? formData.get("job_title") : target.job_title,
+    primary_terminal_id: canManageAccess
+      ? formData.get("primary_terminal_id")
+      : target.primary_terminal_id,
+    role_id: canManageAccess ? formData.get("role_id") : target.role_id,
+    has_global_access: canManageAccess
+      ? formData.get("has_global_access")
+      : target.has_global_access
+        ? "on"
+        : null,
+    additional_terminals: canManageAccess
+      ? readTerminalList(formData)
+      : (currentTerminals ?? []).map((row) => row.terminal_id),
   });
 
   if (!parsed.success) {
@@ -230,30 +290,41 @@ export async function updateUserAction(formData: FormData): Promise<ActionResult
   }
 
   const input = parsed.data;
-  const supabase = await createClient();
 
-  // §56 · aunque tenga todos los permisos, nadie edita sus propios privilegios.
-  // La base lo impide igualmente con un trigger; aquí sólo se explica mejor.
-  if (input.id === context.profile.id) {
-    return actionError("No puede modificar su propio rol, estado ni terminales.");
+  if (canManageAccess) {
+    const reachable = new Set(context.terminals.map((terminal) => terminal.id));
+    const requested = [input.primary_terminal_id, ...input.additional_terminals];
+    if (!context.profile.has_global_access && requested.some((id) => !reachable.has(id))) {
+      return actionError("No tiene acceso a uno de los terminales seleccionados.");
+    }
+    if (!context.profile.has_global_access && input.has_global_access) {
+      return actionError("No puede otorgar acceso global sin tenerlo usted mismo.");
+    }
+  }
+
+  // Tipado como fila parcial de `profiles`, no como `Record<string, unknown>`:
+  // así el compilador comprueba que cada campo asignado exista de verdad en la
+  // tabla, que es justo lo que un objeto abierto deja pasar.
+  const updates: Partial<ProfileRow> = { updated_by: context.profile.id };
+  if (canEditProfile) {
+    updates.full_name = input.full_name;
+    updates.job_title = input.job_title;
+  }
+  if (canManageAccess) {
+    updates.primary_terminal_id = input.primary_terminal_id;
+    updates.role_id = input.role_id;
+    updates.has_global_access = input.has_global_access;
   }
 
   const { error } = await supabase
     .from("profiles")
-    .update({
-      full_name: input.full_name,
-      job_title: input.job_title,
-      primary_terminal_id: input.primary_terminal_id,
-      role_id: input.role_id,
-      has_global_access: input.has_global_access,
-      updated_by: context.profile.id,
-    })
+    .update(updates)
     .eq("id", input.id);
 
   if (error) return actionError(reportError("updateUser", error));
 
   // Los terminales adicionales se reemplazan por el conjunto enviado
-  if (context.permissions.includes(PERMISSIONS.access.manage)) {
+  if (canManageAccess) {
     const { error: deleteError } = await supabase
       .from("user_terminal_access")
       .delete()
@@ -409,11 +480,51 @@ export async function setUserPermissionOverridesAction(
   const parsed = permissionOverridesSchema.safeParse({ id: userId, granted, revoked });
   if (!parsed.success) return actionError("Revise los datos ingresados.");
 
+  const submittedCodes = [...parsed.data.granted, ...parsed.data.revoked];
+  if (submittedCodes.some((code) => !isPermissionCode(code))) {
+    return actionError("La selección contiene un permiso que no existe.");
+  }
+  if (parsed.data.granted.some((code) => parsed.data.revoked.includes(code))) {
+    return actionError("Un permiso no puede concederse y revocarse al mismo tiempo.");
+  }
+
   if (userId === context.profile.id) {
     return actionError("No puede modificar sus propios permisos.");
   }
 
   const supabase = await createClient();
+
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("role_id")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+
+  if (targetError) return actionError(reportError("setOverrides.target", targetError));
+  if (!target) return actionError("No tiene acceso a este usuario.");
+
+  const { data: rolePermissions, error: rolePermissionsError } = await supabase
+    .from("role_permissions")
+    .select("permission_code")
+    .eq("role_id", target.role_id);
+
+  if (rolePermissionsError) {
+    return actionError(reportError("setOverrides.rolePermissions", rolePermissionsError));
+  }
+
+  const effective = new Set<PermissionCode>(
+    (rolePermissions ?? [])
+      .map((row) => row.permission_code)
+      .filter(isPermissionCode),
+  );
+  for (const code of parsed.data.revoked) effective.delete(code as PermissionCode);
+  for (const code of parsed.data.granted) effective.add(code as PermissionCode);
+
+  if (missingPermissionDependencies(effective).length > 0) {
+    return actionError(
+      "Las excepciones dejarían capacidades incompletas. Revise los permisos requeridos.",
+    );
+  }
 
   const { error: deleteError } = await supabase
     .from("user_permission_overrides")
@@ -467,6 +578,11 @@ export async function createRoleAction(formData: FormData): Promise<ActionResult
     return actionError("Revise los datos ingresados.", toFieldErrors(parsed.error));
   }
 
+  const permissionSelection = validatePermissionCodes(parsed.data.permissions);
+  if (!permissionSelection.ok) {
+    return actionError(permissionSelection.error, { permissions: permissionSelection.error });
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -477,9 +593,9 @@ export async function createRoleAction(formData: FormData): Promise<ActionResult
 
   if (error) return actionError(reportError("createRole", error));
 
-  if (parsed.data.permissions.length > 0) {
+  if (permissionSelection.codes.length > 0) {
     const { error: permissionError } = await supabase.from("role_permissions").insert(
-      parsed.data.permissions.map((code) => ({ role_id: data.id, permission_code: code })),
+      permissionSelection.codes.map((code) => ({ role_id: data.id, permission_code: code })),
     );
 
     if (permissionError) return actionError(reportError("createRole.permissions", permissionError));
@@ -507,6 +623,11 @@ export async function updateRoleAction(formData: FormData): Promise<ActionResult
     return actionError("Revise los datos ingresados.", toFieldErrors(parsed.error));
   }
 
+  const permissionSelection = validatePermissionCodes(parsed.data.permissions);
+  if (!permissionSelection.ok) {
+    return actionError(permissionSelection.error, { permissions: permissionSelection.error });
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -524,9 +645,9 @@ export async function updateRoleAction(formData: FormData): Promise<ActionResult
 
   if (deleteError) return actionError(reportError("updateRole.clear", deleteError));
 
-  if (parsed.data.permissions.length > 0) {
+  if (permissionSelection.codes.length > 0) {
     const { error: insertError } = await supabase.from("role_permissions").insert(
-      parsed.data.permissions.map((code) => ({
+      permissionSelection.codes.map((code) => ({
         role_id: parsed.data.id,
         permission_code: code,
       })),

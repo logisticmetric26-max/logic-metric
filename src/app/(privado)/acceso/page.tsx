@@ -91,7 +91,9 @@ export default async function AccesoPage({
       currentUserId={context.profile.id}
       currentUserHasGlobalAccess={context.profile.has_global_access}
       can={{
-        create: context.permissions.includes(PERMISSIONS.users.create),
+        create:
+          context.permissions.includes(PERMISSIONS.users.create) &&
+          context.permissions.includes(PERMISSIONS.access.manage),
         edit: context.permissions.includes(PERMISSIONS.users.edit),
         suspend: context.permissions.includes(PERMISSIONS.users.suspend),
         remove: context.permissions.includes(PERMISSIONS.users.delete),

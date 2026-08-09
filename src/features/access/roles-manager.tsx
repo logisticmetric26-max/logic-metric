@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "@/features/access/actions";
+import {
+  PERMISSION_DEPENDENCIES,
+  grantPermissionWithDependencies,
+  isPermissionCode,
+  revokePermissionWithDependents,
+  type PermissionCode,
+} from "@/lib/auth/permissions";
 import type { PermissionRow, RoleViewRow } from "@/types/database.types";
 
 const MODULE_LABELS: Record<string, string> = {
@@ -178,17 +185,38 @@ function RoleFormModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const readOnly = role?.is_system ?? false;
-  const initial = useMemo(() => new Set(role?.permissions ?? []), [role]);
+  const [selected, setSelected] = useState<Set<PermissionCode>>(() => {
+    let next = new Set<PermissionCode>();
+    for (const code of role?.permissions ?? []) {
+      if (isPermissionCode(code)) next = grantPermissionWithDependencies(next, code);
+    }
+    return next;
+  });
 
   const grouped = useMemo(() => {
     const groups = new Map<string, PermissionRow[]>();
     for (const permission of permissions) {
+      if (!isPermissionCode(permission.code)) continue;
       const list = groups.get(permission.module) ?? [];
       list.push(permission);
       groups.set(permission.module, list);
     }
     return [...groups.entries()];
   }, [permissions]);
+
+  const permissionLabels = useMemo(
+    () => new Map(permissions.map((permission) => [permission.code, permission.label])),
+    [permissions],
+  );
+
+  function togglePermission(code: string, checked: boolean) {
+    if (!isPermissionCode(code)) return;
+    setSelected((current) =>
+      checked
+        ? grantPermissionWithDependencies(current, code)
+        : revokePermissionWithDependents(current, code),
+    );
+  }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -263,7 +291,13 @@ function RoleFormModal({
         </Field>
 
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-ink-secondary">Permisos del rol</p>
+          <div>
+            <p className="text-sm font-medium text-ink-secondary">Capacidades reales del rol</p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Al activar una capacidad se incluyen automáticamente los accesos necesarios para
+              que pueda utilizarse.
+            </p>
+          </div>
 
           {grouped.map(([module, modulePermissions]) => (
             <fieldset key={module} className="rounded-lg border border-border p-3">
@@ -277,10 +311,20 @@ function RoleFormModal({
                     key={permission.code}
                     name="permissions"
                     value={permission.code}
-                    defaultChecked={readOnly ? true : initial.has(permission.code)}
+                    checked={readOnly || (isPermissionCode(permission.code) && selected.has(permission.code))}
+                    onChange={(event) => togglePermission(permission.code, event.target.checked)}
                     disabled={readOnly}
                     label={permission.label}
-                    description={permission.description ?? undefined}
+                    description={
+                      isPermissionCode(permission.code) &&
+                      (PERMISSION_DEPENDENCIES[permission.code]?.length ?? 0) > 0
+                        ? `${permission.description ?? ""} Requiere: ${PERMISSION_DEPENDENCIES[
+                            permission.code
+                          ]!
+                            .map((code) => permissionLabels.get(code) ?? code)
+                            .join(", ")}.`
+                        : permission.description ?? undefined
+                    }
                   />
                 ))}
               </div>

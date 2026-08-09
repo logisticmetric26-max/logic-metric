@@ -7,7 +7,7 @@ import { OpenReviews } from "@/features/technical-reviews/open-reviews";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
 import { reportError } from "@/lib/errors";
 
-export const metadata: Metadata = { title: "En revisión" };
+export const metadata: Metadata = { title: "Enviar a planta" };
 
 const PAGE_SIZE = 25;
 

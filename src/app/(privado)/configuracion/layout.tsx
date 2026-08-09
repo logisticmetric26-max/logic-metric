@@ -19,7 +19,6 @@ export default async function ConfiguracionLayout({
   const context = await requireAnyPermission([
     PERMISSIONS.fleet.view,
     PERMISSIONS.terminals.view,
-    PERMISSIONS.settings.manage,
   ]);
 
   const tabs: TabItem[] = [];
