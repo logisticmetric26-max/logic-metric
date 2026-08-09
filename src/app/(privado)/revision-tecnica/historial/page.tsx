@@ -18,6 +18,7 @@ import { EmptyState, ErrorState } from "@/components/ui/feedback";
 import { FilterBar, FilterDate, FilterSelect, SearchField } from "@/components/ui/filters";
 import { Pagination } from "@/components/ui/pagination";
 import { formatDateOnly, formatDateTime, formatNumber } from "@/lib/format";
+import { isImportedReview } from "@/features/technical-reviews/imported-history";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
 import { reportError } from "@/lib/errors";
 
@@ -50,7 +51,7 @@ export default async function HistorialPage({
   let query = supabase
     .from("technical_review_events_view")
     .select(
-      "id, internal_number, ppu, terminal_name, departure_at, return_at, status, result, guide_number, expiration_date, created_by_name, closed_by_name",
+      "id, internal_number, ppu, terminal_name, driver_name, departure_at, return_at, status, result, guide_number, expiration_date, created_by_name, closed_by_name",
       { count: "planned" },
     )
     .eq("status", "CLOSED")
@@ -196,7 +197,9 @@ export default async function HistorialPage({
                           Salida
                         </span>
                         <p className="mt-1 text-[12.5px] font-medium text-ink-secondary tabular-nums">
-                          {formatDateTime(event.departure_at)}
+                          {isImportedReview(event.driver_name)
+                            ? "Sin registro"
+                            : formatDateTime(event.departure_at)}
                         </p>
                       </div>
                       <div className="rounded-lg bg-fill-subtle px-3 py-2.5 ring-1 ring-border">
@@ -205,7 +208,9 @@ export default async function HistorialPage({
                           Regreso
                         </span>
                         <p className="mt-1 text-[12.5px] font-medium text-ink-secondary tabular-nums">
-                          {formatDateTime(event.return_at)}
+                          {isImportedReview(event.driver_name)
+                            ? "Sin registro"
+                            : formatDateTime(event.return_at)}
                         </p>
                       </div>
                     </div>

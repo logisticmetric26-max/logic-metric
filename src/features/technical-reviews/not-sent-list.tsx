@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ClipboardList, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  MapPin,
+  MessageSquareText,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -167,16 +177,43 @@ export function NotSentList({
                   {records.map((record) => (
                     <RowCard
                       key={record.id}
-                      title={`${record.internal_number} · ${record.ppu}`}
-                      subtitle={`${formatDateOnly(record.event_date)} · ${record.terminal_name}`}
+                      icon={<ClipboardList className="size-[19px]" aria-hidden />}
+                      tone="warning"
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span>Bus {record.internal_number}</span>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-ink-secondary ring-1 ring-border">
+                            {record.ppu}
+                          </span>
+                        </span>
+                      }
+                      subtitle={
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          {record.terminal_name}
+                        </span>
+                      }
                       badge={
                         record.work_order_number ? (
                           <Badge tone="neutral">OT {record.work_order_number}</Badge>
                         ) : undefined
                       }
                       fields={[
-                        { label: "Motivo", value: record.reason },
-                        { label: "Registró", value: record.created_by_name ?? "—" },
+                        {
+                          label: "Fecha",
+                          value: formatDateOnly(record.event_date),
+                          icon: <CalendarDays className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Motivo",
+                          value: record.reason,
+                          icon: <MessageSquareText className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Registró",
+                          value: record.created_by_name ?? "—",
+                          icon: <UserRound className="size-3" aria-hidden />,
+                        },
                       ]}
                       actions={
                         <RowMenu

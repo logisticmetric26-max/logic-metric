@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileX2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  BusFront,
+  Clock3,
+  FileText,
+  FileX2,
+  ListX,
+  MapPin,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -89,7 +99,7 @@ export default async function RechazadosPage({
     <Card>
       <FilterBar
         activeCount={activeFilterCount}
-        search={<SearchField placeholder="Buscar por PPU, numero interno o guia..." />}
+        search={<SearchField placeholder="Buscar por PPU, número interno o guía…" />}
       >
         {context.terminals.length > 1 && (
           <FilterSelect
@@ -110,13 +120,13 @@ export default async function RechazadosPage({
           icon={<FileX2 className="size-5" aria-hidden />}
           title={
             activeFilterCount > 0
-              ? "Ninguna revision rechazada coincide con los filtros"
+              ? "Ninguna revisión rechazada coincide con los filtros"
               : "No hay revisiones rechazadas"
           }
           description={
             activeFilterCount > 0
-              ? "Modifique la busqueda o limpie los filtros aplicados."
-              : "Las revisiones cerradas con resultado rechazado apareceran aqui."
+              ? "Modifique la búsqueda o limpie los filtros aplicados."
+              : "Las revisiones cerradas con resultado rechazado aparecerán aquí."
           }
         />
       ) : (
@@ -179,21 +189,64 @@ export default async function RechazadosPage({
                 {events.map((event) => (
                   <Link key={event.id} href={`/revision-tecnica/detalle/${event.id}`}>
                     <RowCard
-                      title={`${event.internal_number} · ${event.ppu}`}
-                      subtitle={`${event.terminal_name} · ${formatDateTime(event.return_at)}`}
-                      badge={<AnalysisStatusBadge status={event.analysis_status} />}
+                      icon={<BusFront className="size-[19px]" aria-hidden />}
+                      tone="danger"
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span>Bus {event.internal_number}</span>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-ink-secondary ring-1 ring-border">
+                            {event.ppu}
+                          </span>
+                        </span>
+                      }
+                      subtitle={
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          {event.terminal_name}
+                        </span>
+                      }
+                      badge={<Badge tone="danger">Rechazado</Badge>}
                       fields={[
-                        { label: "N. guia", value: event.guide_number ?? "-" },
+                        {
+                          label: "Regreso",
+                          value: formatDateTime(event.return_at),
+                          icon: <Clock3 className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "N.º de guía",
+                          value: event.guide_number ?? "—",
+                          icon: <FileText className="size-3" aria-hidden />,
+                        },
                         {
                           label: "Motivos",
                           value:
                             event.needs_review_count > 0
                               ? `${event.rejection_count} (${event.needs_review_count} por revisar)`
                               : event.rejection_count,
+                          icon: <ListX className="size-3" aria-hidden />,
                         },
-                        { label: "Abrio", value: event.created_by_name ?? "-" },
-                        { label: "Cerro", value: event.closed_by_name ?? "-" },
+                        {
+                          label: "Análisis",
+                          value: <AnalysisStatusBadge status={event.analysis_status} />,
+                          icon: <Sparkles className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Abrió",
+                          value: event.created_by_name ?? "—",
+                          icon: <UserRound className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Cerró",
+                          value: event.closed_by_name ?? "—",
+                          icon: <UserRound className="size-3" aria-hidden />,
+                        },
                       ]}
+                      actions={
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-700">
+                          Ver detalle
+                          <ArrowUpRight className="size-4" aria-hidden />
+                        </span>
+                      }
                     />
                   </Link>
                 ))}

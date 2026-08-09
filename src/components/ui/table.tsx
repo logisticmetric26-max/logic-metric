@@ -120,10 +120,36 @@ export function TD({
   );
 }
 
-/** Contenedor de las tarjetas que reemplazan la tabla en móvil. */
+/**
+ * Contenedor único de listados.
+ *
+ * Cada registro vive en su propia superficie para que el listado conserve la
+ * misma lectura en escritorio, tablet y móvil. El espacio exterior separa
+ * procesos; ya no se depende de divisores ni de una tabla alternativa.
+ */
 export function CardList({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("divide-y divide-border", className)}>{children}</div>;
+  return (
+    <div
+      className={cn(
+        "space-y-3 bg-surface-subtle/35 p-3 sm:p-4 [&>a]:block [&>a]:rounded-xl",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
+
+type RowCardTone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
+
+const ROW_CARD_TONES: Record<RowCardTone, { accent: string; icon: string }> = {
+  neutral: { accent: "bg-ink-subtle", icon: "bg-fill-subtle text-ink-secondary ring-border" },
+  brand: { accent: "bg-brand-600", icon: "bg-brand-50 text-brand-700 ring-brand-200" },
+  success: { accent: "bg-success-600", icon: "bg-success-50 text-success-700 ring-success-200" },
+  warning: { accent: "bg-warning-600", icon: "bg-warning-50 text-warning-700 ring-warning-200" },
+  danger: { accent: "bg-danger-600", icon: "bg-danger-50 text-danger-700 ring-danger-200" },
+  info: { accent: "bg-info-600", icon: "bg-info-50 text-info-700 ring-info-200" },
+};
 
 export function RowCard({
   title,
@@ -131,63 +157,96 @@ export function RowCard({
   badge,
   actions,
   fields,
+  icon,
+  tone = "neutral",
   onClick,
+  className,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   badge?: ReactNode;
   actions?: ReactNode;
-  fields?: { label: string; value: ReactNode }[];
+  fields?: { label: string; value: ReactNode; icon?: ReactNode; className?: string }[];
+  icon?: ReactNode;
+  tone?: RowCardTone;
   onClick?: () => void;
+  className?: string;
 }) {
+  const colors = ROW_CARD_TONES[tone];
+
   return (
     <div
       onClick={onClick}
       className={cn(
-        "px-4 py-4 transition-colors",
-        onClick && "cursor-pointer active:bg-fill-subtle",
+        "group/row relative overflow-visible rounded-xl bg-surface shadow-[var(--shadow-flat)] ring-1 ring-border",
+        "transition-all duration-200 hover:-translate-y-px hover:shadow-[var(--shadow-raised)] hover:ring-border-strong",
+        onClick && "cursor-pointer active:translate-y-0 active:bg-fill-subtle",
+        className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-ink">{title}</p>
-          {subtitle && <p className="mt-0.5 truncate text-xs text-ink-muted">{subtitle}</p>}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {badge}
-          {actions}
-        </div>
-      </div>
+      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1 rounded-l-xl", colors.accent)} />
 
-      {fields && fields.length > 0 && (
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-          {fields.map((field) => (
-            <div key={field.label} className="min-w-0">
-              <dt className="text-[10px] font-semibold tracking-[0.045em] text-ink-subtle uppercase">
-                {field.label}
-              </dt>
-              <dd className="truncate text-[13px] text-ink-secondary">{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+      <div className="grid min-w-0 gap-4 p-4 pl-5 sm:p-5 sm:pl-6 min-[1100px]:grid-cols-[minmax(11rem,0.85fr)_minmax(0,2fr)_auto] min-[1100px]:items-center min-[1100px]:gap-5">
+        <div className="flex min-w-0 items-start gap-3">
+          {icon && (
+            <span
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset",
+                colors.icon,
+              )}
+            >
+              {icon}
+            </span>
+          )}
+          <div className="min-w-0 pt-0.5">
+            <div className="text-[14px] font-semibold tracking-[-0.012em] text-ink">{title}</div>
+            {subtitle && (
+              <div className="mt-1 min-w-0 truncate text-[11.5px] text-ink-muted">{subtitle}</div>
+            )}
+          </div>
+        </div>
+
+        {fields && fields.length > 0 ? (
+          <dl
+            className={cn(
+              "grid min-w-0 grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4",
+              "sm:[grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))] min-[1100px]:border-t-0 min-[1100px]:pt-0",
+              !badge && !actions && "min-[1100px]:col-span-2",
+            )}
+          >
+            {fields.map((field) => (
+              <div key={field.label} className={cn("min-w-0", field.className)}>
+                <dt className="flex items-center gap-1.5 text-[9.5px] font-semibold tracking-[0.055em] text-ink-subtle uppercase">
+                  {field.icon && <span className="shrink-0">{field.icon}</span>}
+                  <span className="truncate">{field.label}</span>
+                </dt>
+                <dd className="mt-1 min-w-0 truncate text-[12.5px] font-medium text-ink-secondary">
+                  {field.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+
+        {(badge || actions) && (
+          <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border pt-3 min-[1100px]:min-w-fit min-[1100px]:justify-end min-[1100px]:border-t-0 min-[1100px]:pt-0">
+            {badge && <div className="min-w-0">{badge}</div>}
+            {actions && <div className="ml-auto shrink-0">{actions}</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /**
- * Muestra `table` desde `lg` y `cards` por debajo.
- * Un único punto de corte para todos los listados de la aplicación.
+ * Las tarjetas son el formato predeterminado en todos los anchos.
+ *
+ * `table` se conserva temporalmente como prop opcional para que módulos
+ * externos antiguos no fallen al actualizar, pero ya no se renderiza.
  */
-export function ResponsiveTable({ table, cards }: { table: ReactNode; cards: ReactNode }) {
-  return (
-    <>
-      <div className="hidden lg:block">
-        <TableScroller>{table}</TableScroller>
-      </div>
-      <div className="lg:hidden">{cards}</div>
-    </>
-  );
+export function ResponsiveTable({ cards }: { table?: ReactNode; cards: ReactNode }) {
+  return <div>{cards}</div>;
 }
 
 /** Par etiqueta/valor para vistas de detalle. */

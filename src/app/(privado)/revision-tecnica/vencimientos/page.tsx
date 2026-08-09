@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarClock } from "lucide-react";
+import { BusFront, CalendarCheck2, CalendarClock, Clock3, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -197,18 +197,52 @@ export default async function VencimientosPage({
                   {rows.map((row) => (
                     <RowCard
                       key={row.fleet_id}
-                      title={`${row.internal_number} · ${row.ppu}`}
+                      icon={<BusFront className="size-[19px]" aria-hidden />}
+                      tone={
+                        row.expiration_status === "VALID"
+                          ? "success"
+                          : row.expiration_status === "EXPIRING_SOON"
+                            ? "warning"
+                            : row.expiration_status === "EXPIRED"
+                              ? "danger"
+                              : "neutral"
+                      }
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span>Bus {row.internal_number}</span>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-ink-secondary ring-1 ring-border">
+                            {row.ppu}
+                          </span>
+                        </span>
+                      }
+                      subtitle={
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          {context.terminals.find((terminal) => terminal.id === row.terminal_id)
+                            ?.name ?? "Sin terminal"}
+                        </span>
+                      }
                       badge={<ExpirationBadge status={row.expiration_status} />}
                       fields={[
-                        { label: "Vencimiento", value: formatDateOnly(row.expiration_date) },
                         {
-                          label: "Días",
+                          label: "Vencimiento",
+                          value: formatDateOnly(row.expiration_date),
+                          icon: <CalendarCheck2 className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Días restantes",
                           value:
                             row.days_to_expiration === null
                               ? "—"
                               : row.days_to_expiration < 0
                                 ? `${Math.abs(row.days_to_expiration)} vencido`
                                 : row.days_to_expiration,
+                          icon: <Clock3 className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Última aprobación",
+                          value: formatDateOnly(row.last_approved_at?.slice(0, 10) ?? null),
+                          icon: <CalendarClock className="size-3" aria-hidden />,
                         },
                       ]}
                     />

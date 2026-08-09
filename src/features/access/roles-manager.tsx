@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Lock, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/field";
@@ -12,12 +12,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "@/features/access/actions";
@@ -96,75 +90,27 @@ export function RolesManager({
           />
         ) : (
           <ResponsiveTable
-            table={
-              <Table>
-                <THead>
-                  <TH>Rol</TH>
-                  <TH>Descripción</TH>
-                  <TH align="center">Permisos</TH>
-                  <TH align="center">Usuarios</TH>
-                  <TH align="right">Acciones</TH>
-                </THead>
-                <TBody>
-                  {roles.map((role) => (
-                    <TR key={role.id}>
-                      <TD>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{role.name}</span>
-                          {role.is_system && (
-                            <Badge tone="warning" icon={<Lock className="size-3" aria-hidden />}>
-                              Sistema
-                            </Badge>
-                          )}
-                        </div>
-                      </TD>
-                      <TD className="text-ink-secondary">{role.description ?? "—"}</TD>
-                      <TD align="center" className="tabular-nums">
-                        {role.permissions.length}
-                      </TD>
-                      <TD align="center" className="tabular-nums">
-                        {role.user_count}
-                      </TD>
-                      <TD align="right">
-                        {canManage && (
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditing(role)}
-                              icon={<Pencil className="size-4" aria-hidden />}
-                            >
-                              {role.is_system ? "Ver" : "Editar"}
-                            </Button>
-                            {!role.is_system && role.user_count === 0 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleting(role)}
-                                icon={<Trash2 className="size-4" aria-hidden />}
-                              >
-                                Eliminar
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-            }
             cards={
               <CardList>
                 {roles.map((role) => (
                   <RowCard
                     key={role.id}
+                    icon={<ShieldCheck className="size-[19px]" aria-hidden />}
+                    tone={role.is_system ? "warning" : "brand"}
                     title={role.name}
                     subtitle={role.description ?? undefined}
                     badge={role.is_system ? <Badge tone="warning">Sistema</Badge> : undefined}
                     fields={[
-                      { label: "Permisos", value: role.permissions.length },
-                      { label: "Usuarios", value: role.user_count },
+                      {
+                        label: "Permisos",
+                        value: role.permissions.length,
+                        icon: <KeyRound className="size-3" aria-hidden />,
+                      },
+                      {
+                        label: "Usuarios asignados",
+                        value: role.user_count,
+                        icon: <Users className="size-3" aria-hidden />,
+                      },
                     ]}
                     onClick={canManage ? () => setEditing(role) : undefined}
                   />

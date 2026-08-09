@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Skeleton, TableSkeleton } from "@/components/ui/feedback";
+import { CardsSkeleton, Skeleton } from "@/components/ui/feedback";
 
 /**
  * Esqueleto de carga de una sección.
@@ -19,10 +19,10 @@ import { Skeleton, TableSkeleton } from "@/components/ui/feedback";
  */
 export function SectionLoading({
   rows = 6,
-  columns = 6,
   filters = true,
 }: {
   rows?: number;
+  /** Conservado por compatibilidad; las tarjetas ya no usan columnas rígidas. */
   columns?: number;
   /** Reserva el espacio de la barra de filtros para que nada salte al llegar. */
   filters?: boolean;
@@ -36,7 +36,7 @@ export function SectionLoading({
           <Skeleton className="h-10 w-40 rounded-md" />
         </div>
       )}
-      <TableSkeleton rows={rows} columns={columns} />
+      <CardsSkeleton count={rows} />
     </Card>
   );
 }

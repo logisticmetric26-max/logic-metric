@@ -122,9 +122,9 @@ export function TableSkeleton({ rows = 6, columns = 5 }: { rows?: number; column
 
 export function CardsSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy>
+    <div className="space-y-3 bg-surface-subtle/35 p-3 sm:p-4" aria-busy>
       {Array.from({ length: count }).map((_, index) => (
-        <Skeleton key={index} className="h-28" />
+        <Skeleton key={index} className="h-32 rounded-xl sm:h-28 min-[1100px]:h-24" />
       ))}
     </div>
   );

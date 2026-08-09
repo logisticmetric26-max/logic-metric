@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Timer } from "lucide-react";
+import { BusFront, Clock3, MapPin, Plus, Timer, UserCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/feedback";
@@ -11,12 +11,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { ElapsedTime } from "@/features/technical-reviews/elapsed-time";
@@ -114,56 +108,48 @@ export function OpenReviews({
         ) : (
           <>
             <ResponsiveTable
-              table={
-                <Table>
-                  <THead>
-                    <TH>N.º interno</TH>
-                    <TH>PPU</TH>
-                    <TH>Conductor</TH>
-                    <TH>Terminal</TH>
-                    <TH>Salida</TH>
-                    <TH>Transcurrido</TH>
-                    <TH>Registró</TH>
-                    <TH align="right">Acción</TH>
-                  </THead>
-                  <TBody>
-                    {events.map((event) => (
-                      <TR key={event.id}>
-                        <TD className="font-medium">{event.internal_number}</TD>
-                        <TD className="font-mono text-xs">{event.ppu}</TD>
-                        <TD className="text-ink-secondary">{event.driver_name}</TD>
-                        <TD className="text-ink-secondary">{event.terminal_name}</TD>
-                        <TD className="text-ink-secondary whitespace-nowrap">
-                          {formatDateTime(event.departure_at)}
-                        </TD>
-                        <TD className="text-ink-secondary">
-                          <ElapsedTime from={event.departure_at} />
-                        </TD>
-                        <TD className="text-ink-muted">{event.created_by_name ?? "—"}</TD>
-                        <TD align="right">
-                          {canClose && (
-                            <Button size="sm" onClick={() => setClosing(event)}>
-                              Cerrar revisión
-                            </Button>
-                          )}
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              }
               cards={
                 <CardList>
                   {events.map((event) => (
                     <RowCard
                       key={event.id}
-                      title={`${event.internal_number} · ${event.ppu}`}
-                      subtitle={event.terminal_name}
+                      icon={<BusFront className="size-[19px]" aria-hidden />}
+                      tone="info"
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span>Bus {event.internal_number}</span>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-ink-secondary ring-1 ring-border">
+                            {event.ppu}
+                          </span>
+                        </span>
+                      }
+                      subtitle={
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          {event.terminal_name}
+                        </span>
+                      }
                       fields={[
-                        { label: "Conductor", value: event.driver_name },
-                        { label: "Transcurrido", value: <ElapsedTime from={event.departure_at} /> },
-                        { label: "Salida", value: formatDateTime(event.departure_at) },
-                        { label: "Registró", value: event.created_by_name ?? "—" },
+                        {
+                          label: "Conductor",
+                          value: event.driver_name,
+                          icon: <UserRound className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Transcurrido",
+                          value: <ElapsedTime from={event.departure_at} />,
+                          icon: <Timer className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Salida",
+                          value: formatDateTime(event.departure_at),
+                          icon: <Clock3 className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Registró",
+                          value: event.created_by_name ?? "—",
+                          icon: <UserCheck className="size-3" aria-hidden />,
+                        },
                       ]}
                       actions={
                         canClose ? (

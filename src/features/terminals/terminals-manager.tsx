@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Building2, MoreVertical, Pencil, Plus, Power, Trash2 } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  Hash,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Power,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Checkbox } from "@/components/ui/field";
@@ -13,12 +22,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/format";
@@ -119,74 +122,32 @@ export function TerminalsManager({ terminals, canCreate, canEdit, canDelete }: P
           />
         ) : (
           <ResponsiveTable
-            table={
-              <Table>
-                <THead>
-                  <TH>Nombre</TH>
-                  <TH>Código</TH>
-                  <TH>Estado</TH>
-                  <TH>Creado</TH>
-                  <TH align="right">Acciones</TH>
-                </THead>
-                <TBody>
-                  {terminals.map((terminal) => (
-                    <TR key={terminal.id}>
-                      <TD className="font-medium">{terminal.name}</TD>
-                      <TD className="text-ink-muted">{terminal.code ?? "—"}</TD>
-                      <TD>
-                        <ActiveBadge active={terminal.active} />
-                      </TD>
-                      <TD className="text-ink-muted">{formatDate(terminal.created_at)}</TD>
-                      <TD align="right">
-                        {(canEdit || canDelete) && (
-                          <div className="flex justify-end gap-1">
-                            {canEdit && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditing(terminal)}
-                                  icon={<Pencil className="size-4" aria-hidden />}
-                                >
-                                  Editar
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setToggling(terminal)}
-                                  icon={<Power className="size-4" aria-hidden />}
-                                >
-                                  {terminal.active ? "Desactivar" : "Activar"}
-                                </Button>
-                              </>
-                            )}
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleting(terminal)}
-                                icon={<Trash2 className="size-4" aria-hidden />}
-                              >
-                                Eliminar
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-            }
             cards={
               <CardList>
                 {terminals.map((terminal) => (
                   <RowCard
                     key={terminal.id}
+                    icon={<Building2 className="size-[19px]" aria-hidden />}
+                    tone={terminal.active ? "success" : "neutral"}
                     title={terminal.name}
-                    subtitle={terminal.code ?? undefined}
+                    subtitle={
+                      terminal.code ? (
+                        <span className="flex items-center gap-1.5">
+                          <Hash className="size-3.5" aria-hidden />
+                          Código {terminal.code}
+                        </span>
+                      ) : (
+                        "Sin código"
+                      )
+                    }
                     badge={<ActiveBadge active={terminal.active} />}
-                    fields={[{ label: "Creado", value: formatDate(terminal.created_at) }]}
+                    fields={[
+                      {
+                        label: "Fecha de creación",
+                        value: formatDate(terminal.created_at),
+                        icon: <CalendarDays className="size-3" aria-hidden />,
+                      },
+                    ]}
                     actions={
                       canEdit || canDelete ? (
                         <TerminalRowMenu

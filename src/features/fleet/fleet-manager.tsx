@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bus, MoreVertical, Pencil, Plus, Power } from "lucide-react";
+import { Bus, Fuel, MapPin, MoreVertical, Pencil, Plus, Power, Shapes, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox, Field, Input, Select } from "@/components/ui/field";
@@ -14,12 +14,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -131,71 +125,44 @@ export function FleetManager({
         ) : (
           <>
             <ResponsiveTable
-              table={
-                <Table>
-                  <THead>
-                    <TH>N.º interno</TH>
-                    <TH>PPU</TH>
-                    <TH>Modelo</TH>
-                    <TH>Subclase</TH>
-                    <TH>Tipo</TH>
-                    <TH>Terminal</TH>
-                    <TH>Estado</TH>
-                    <TH align="right">Acciones</TH>
-                  </THead>
-                  <TBody>
-                    {buses.map((bus) => (
-                      <TR key={bus.id}>
-                        <TD className="font-medium">{bus.internal_number}</TD>
-                        <TD className="font-mono text-xs tracking-wide">{bus.ppu}</TD>
-                        <TD className="text-ink-secondary">{bus.model ?? "—"}</TD>
-                        <TD className="text-ink-secondary">{bus.subclass ?? "—"}</TD>
-                        <TD>
-                          <Badge tone="neutral">{bus.fuel_type_label ?? bus.fuel_type}</Badge>
-                        </TD>
-                        <TD className="text-ink-secondary">{bus.terminal_name}</TD>
-                        <TD>
-                          <ActiveBadge active={bus.active} />
-                        </TD>
-                        <TD align="right">
-                          {canEdit && (
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditing(bus)}
-                                icon={<Pencil className="size-4" aria-hidden />}
-                              >
-                                Editar
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setToggling(bus)}
-                                icon={<Power className="size-4" aria-hidden />}
-                              >
-                                {bus.active ? "Desactivar" : "Activar"}
-                              </Button>
-                            </div>
-                          )}
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              }
               cards={
                 <CardList>
                   {buses.map((bus) => (
                     <RowCard
                       key={bus.id}
-                      title={`${bus.internal_number} · ${bus.ppu}`}
-                      subtitle={bus.terminal_name}
+                      icon={<Bus className="size-[19px]" aria-hidden />}
+                      tone={bus.active ? "success" : "neutral"}
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span>Bus {bus.internal_number}</span>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-ink-secondary ring-1 ring-border">
+                            {bus.ppu}
+                          </span>
+                        </span>
+                      }
+                      subtitle={
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          {bus.terminal_name}
+                        </span>
+                      }
                       badge={<ActiveBadge active={bus.active} />}
                       fields={[
-                        { label: "Modelo", value: bus.model ?? "—" },
-                        { label: "Subclase", value: bus.subclass ?? "—" },
-                        { label: "Tipo", value: bus.fuel_type_label ?? bus.fuel_type },
+                        {
+                          label: "Modelo",
+                          value: bus.model ?? "—",
+                          icon: <Wrench className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Subclase",
+                          value: bus.subclass ?? "—",
+                          icon: <Shapes className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Combustible",
+                          value: bus.fuel_type_label ?? bus.fuel_type,
+                          icon: <Fuel className="size-3" aria-hidden />,
+                        },
                       ]}
                       actions={
                         canEdit ? (

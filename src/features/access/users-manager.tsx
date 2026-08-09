@@ -2,10 +2,13 @@
 
 import { useState, useTransition } from "react";
 import {
+  BriefcaseBusiness,
   KeyRound,
+  MapPin,
   MoreVertical,
   Pencil,
   Plus,
+  Radio,
   ShieldCheck,
   Trash2,
   UserCheck,
@@ -27,12 +30,6 @@ import {
   CardList,
   ResponsiveTable,
   RowCard,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { formatRut } from "@/lib/auth/rut";
@@ -188,78 +185,29 @@ export function UsersManager({
         ) : (
           <>
             <ResponsiveTable
-              table={
-                <Table>
-                  <THead>
-                    <TH>RUT</TH>
-                    <TH>Nombre</TH>
-                    <TH>Conexión</TH>
-                    <TH>Cargo</TH>
-                    <TH>Terminal</TH>
-                    <TH>Rol</TH>
-                    <TH>Accesos autorizados</TH>
-                    <TH>Estado</TH>
-                    <TH align="right">Acciones</TH>
-                  </THead>
-                  <TBody>
-                    {users.map((user) => (
-                      <TR key={user.id}>
-                        <TD className="font-mono text-xs whitespace-nowrap">{formatRut(user.rut)}</TD>
-                        <TD className="font-medium">
-                          <span className="flex items-center gap-2.5">
-                            <Avatar
-                              name={user.full_name}
-                              src={avatarUrl(user.avatar_path, supabaseUrl)}
-                              size="sm"
-                            />
-                            <span className="min-w-0">
-                              <span className="block truncate">{user.full_name}</span>
-                              {user.id === currentUserId && (
-                                <span className="text-xs font-normal text-ink-subtle">(usted)</span>
-                              )}
-                            </span>
-                          </span>
-                        </TD>
-                        <TD>
-                          <PresenceCell
-                            lastSeenAt={user.last_seen_at}
-                            lastLoginAt={user.last_login_at}
-                          />
-                        </TD>
-                        <TD className="text-ink-secondary">{user.job_title}</TD>
-                        <TD className="text-ink-secondary">{user.primary_terminal_name}</TD>
-                        <TD>
-                          <Badge tone="brand">{user.role_name}</Badge>
-                        </TD>
-                        <TD>
-                          <AccessSummary user={user} />
-                        </TD>
-                        <TD>
-                          <UserStatusBadge status={user.status} />
-                        </TD>
-                        <TD align="right">
-                          <UserRowMenu
-                            user={user}
-                            isSelf={user.id === currentUserId}
-                            can={can}
-                            onEdit={() => setEditing(user)}
-                            onPermissions={() => setPermissionsFor(user)}
-                            onStatus={() => setStatusFor(user)}
-                            onDelete={() => setDeleting(user)}
-                            onResetPassword={() => setResettingFor(user)}
-                          />
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              }
               cards={
                 <CardList>
                   {users.map((user) => (
                     <RowCard
                       key={user.id}
-                      title={user.full_name}
+                      icon={
+                        <Avatar
+                          name={user.full_name}
+                          src={avatarUrl(user.avatar_path, supabaseUrl)}
+                          size="sm"
+                        />
+                      }
+                      tone={user.status === "ACTIVE" ? "success" : "danger"}
+                      title={
+                        <span>
+                          {user.full_name}
+                          {user.id === currentUserId && (
+                            <span className="ml-1.5 text-[11px] font-normal text-ink-muted">
+                              (usted)
+                            </span>
+                          )}
+                        </span>
+                      }
                       subtitle={formatRut(user.rut)}
                       badge={<UserStatusBadge status={user.status} />}
                       fields={[
@@ -271,11 +219,28 @@ export function UsersManager({
                               lastLoginAt={user.last_login_at}
                             />
                           ),
+                          icon: <Radio className="size-3" aria-hidden />,
                         },
-                        { label: "Cargo", value: user.job_title },
-                        { label: "Terminal", value: user.primary_terminal_name },
-                        { label: "Rol", value: user.role_name },
-                        { label: "Accesos", value: <AccessSummary user={user} /> },
+                        {
+                          label: "Cargo",
+                          value: user.job_title,
+                          icon: <BriefcaseBusiness className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Terminal",
+                          value: user.primary_terminal_name,
+                          icon: <MapPin className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Rol",
+                          value: user.role_name,
+                          icon: <ShieldCheck className="size-3" aria-hidden />,
+                        },
+                        {
+                          label: "Accesos",
+                          value: <AccessSummary user={user} />,
+                          icon: <KeyRound className="size-3" aria-hidden />,
+                        },
                       ]}
                       actions={
                         <UserRowMenu
