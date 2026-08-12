@@ -120,12 +120,27 @@ export type FleetRow = {
   model: string | null;
   subclass: string | null;
   fuel_type: string;
+  zone: string | null;
   terminal_id: string;
   active: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;
   updated_by: string | null;
+}
+
+export type BusWashRecordRow = {
+  id: string;
+  fleet_id: string;
+  terminal_id: string;
+  record_date: string;
+  bm_completed: boolean;
+  body_wash_completed: boolean;
+  in_repair: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type TechnicalReviewEventRow = {
@@ -253,6 +268,7 @@ export type FleetExpirationStatusRow = {
   model: string | null;
   subclass: string | null;
   fuel_type: string;
+  zone: string | null;
   terminal_id: string;
   active: boolean;
   last_approved_event_id: string | null;
@@ -271,6 +287,7 @@ export type FleetViewRow = {
   subclass: string | null;
   fuel_type: string;
   fuel_type_label: string | null;
+  zone: string | null;
   terminal_id: string;
   terminal_name: string;
   active: boolean;
@@ -498,6 +515,7 @@ export type Database = {
           | "id"
           | "model"
           | "subclass"
+          | "zone"
           | "active"
           | "created_at"
           | "updated_at"
@@ -505,6 +523,22 @@ export type Database = {
           | "updated_by"
         >;
         Update: Partial<FleetRow>;
+        Relationships: [];
+      };
+      bus_wash_records: {
+        Row: BusWashRecordRow;
+        Insert: WithDefaults<
+          BusWashRecordRow,
+          | "id"
+          | "bm_completed"
+          | "body_wash_completed"
+          | "in_repair"
+          | "created_by"
+          | "updated_by"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<BusWashRecordRow>;
         Relationships: [];
       };
       technical_review_events: {

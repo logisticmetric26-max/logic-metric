@@ -1,4 +1,4 @@
-import { ClipboardCheck, Droplets, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ClipboardCheck, Droplets, Settings, ShieldCheck, Sparkles, type LucideIcon } from "lucide-react";
 import { PERMISSIONS, type PermissionCode } from "@/lib/auth/permissions";
 
 /**
@@ -41,6 +41,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     description: "Calendario de combustible y AdBlue",
   },
   {
+    label: "Lavado Buses",
+    href: "/lavado-buses",
+    icon: Sparkles,
+    permissions: [PERMISSIONS.busWash.view],
+    group: "main",
+    description: "B&M, carroceria y reparacion diaria",
+  },
+  {
     label: "Configuración",
     href: "/configuracion",
     icon: Settings,
@@ -68,6 +76,7 @@ export function visibleNavItems(permissions: readonly string[]): NavItem[] {
 export const ROUTE_LABELS: Record<string, string> = {
   "revision-tecnica": "Revisión Técnica",
   combustible: "Combustible",
+  "lavado-buses": "Lavado Buses",
   "en-revision": "En revisión",
   "no-enviados": "No enviados",
   rechazados: "Rechazados",

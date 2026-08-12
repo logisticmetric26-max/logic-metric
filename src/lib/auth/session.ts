@@ -100,6 +100,7 @@ export async function requireAnyPermission(
 export function landingRouteFor(context: CurrentUserContext): string {
   if (context.permissions.includes(PERMISSIONS.technicalReview.view)) return "/revision-tecnica";
   if (context.permissions.includes(PERMISSIONS.fuelCalendar.view)) return "/combustible";
+  if (context.permissions.includes(PERMISSIONS.busWash.view)) return "/lavado-buses";
   if (context.permissions.includes(PERMISSIONS.fleet.view)) return "/configuracion/flota";
   if (context.permissions.includes(PERMISSIONS.terminals.view)) return "/configuracion/terminales";
   if (context.permissions.includes(PERMISSIONS.users.view)) return "/acceso";

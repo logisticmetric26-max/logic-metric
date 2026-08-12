@@ -32,6 +32,10 @@ export const PERMISSIONS = {
     confirm: "fuel_calendar.confirm",
     bulkImport: "fuel_calendar.bulk_import",
   },
+  busWash: {
+    view: "bus_wash.view",
+    edit: "bus_wash.edit",
+  },
   fleet: {
     view: "fleet.view",
     create: "fleet.create",
@@ -91,6 +95,7 @@ export const PERMISSION_DEPENDENCIES: Readonly<
     PERMISSIONS.fuelCalendar.view,
     PERMISSIONS.fuelCalendar.create,
   ],
+  [PERMISSIONS.busWash.edit]: [PERMISSIONS.busWash.view],
   [PERMISSIONS.fleet.create]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.fleet.edit]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.terminals.create]: [PERMISSIONS.terminals.view],
