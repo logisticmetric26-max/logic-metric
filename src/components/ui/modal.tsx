@@ -48,6 +48,14 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
 
+    // El foco entra al panel sólo al abrir el modal. Repetirlo en cada render
+    // roba el cursor a los inputs controlados mientras el usuario escribe.
+    panelRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !busy) onClose();
     }
@@ -57,9 +65,6 @@ export function Modal({
     // Bloquea el scroll de fondo mientras el modal está abierto
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
-    // El foco entra al panel para que teclado y lector de pantalla lo sigan
-    panelRef.current?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
