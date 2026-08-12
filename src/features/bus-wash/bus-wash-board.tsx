@@ -229,7 +229,9 @@ export function BusWashBoard({
                         <ActiveBadge active={row.active} />
                         {row.in_repair && <Badge tone="warning">En reparacion</Badge>}
                       </div>
-                      <p className="mt-1 text-[12px] text-ink-muted">{row.terminal_name}</p>
+                      <p className="mt-1 text-[12px] text-ink-muted">
+                        {row.terminal_name} · Zona {row.zone?.trim() || "Sin zona"}
+                      </p>
                       <p className="mt-2 text-[11px] text-ink-muted">
                         {row.updated_at
                           ? `Ultima actualizacion: ${formatDateTime(row.updated_at)}`
