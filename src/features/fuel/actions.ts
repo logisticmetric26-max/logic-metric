@@ -39,6 +39,10 @@ type ImportedFuelRow = FuelDeliveryInput & {
 };
 
 type FuelDeliveryInsertRow = Database["public"]["Tables"]["fuel_delivery_schedules"]["Insert"];
+type WorkbookLoadInput = Parameters<Workbook["xlsx"]["load"]>[0];
+type ParseImportedRowResult =
+  | { ok: false; issue: string }
+  | { ok: true; row: ImportedFuelRow };
 
 function revalidateFuelCalendar() {
   for (const path of FUEL_PATHS) revalidatePath(path);
@@ -123,7 +127,7 @@ function parseImportedRow(
   mapping: Partial<Record<FuelImportColumnKey, number>>,
   source: string,
   terminals: Map<string, { id: string; name: string }>,
-) {
+): ParseImportedRowResult {
   const terminalCell = readCell(row, mapping.terminal);
   const requestReferenceCell = readCell(row, mapping.request_reference);
   const deliveryAddressCell = readCell(row, mapping.delivery_address);
@@ -140,22 +144,22 @@ function parseImportedRow(
   const terminalRef = terminalCell.text;
   const terminal = terminals.get(terminalRef) ?? terminals.get(normalizeImportKey(terminalRef));
   if (!terminal) {
-    return { issue: `${source}: terminal "${terminalRef || "(vacío)"}" no reconocido.` };
+    return { ok: false, issue: `${source}: terminal "${terminalRef || "(vacío)"}" no reconocido.` };
   }
 
   const productType = inferFuelProductType(productTypeCell.value, source);
   if (!productType) {
-    return { issue: `${source}: el producto debe indicar Combustible o AdBlue.` };
+    return { ok: false, issue: `${source}: el producto debe indicar Combustible o AdBlue.` };
   }
 
   const receptionWindow = parseFuelReceptionWindow(receptionWindowCell.value);
   if (!receptionWindow) {
-    return { issue: `${source}: la ventana debe ser AM o PM.` };
+    return { ok: false, issue: `${source}: la ventana debe ser AM o PM.` };
   }
 
   const scheduledDate = parseExcelDate(scheduledDateCell.value);
   if (!scheduledDate) {
-    return { issue: `${source}: la fecha programada no es válida.` };
+    return { ok: false, issue: `${source}: la fecha programada no es válida.` };
   }
 
   const parsed = fuelDeliverySchema.safeParse({
@@ -175,10 +179,11 @@ function parseImportedRow(
 
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0]?.message ?? "La fila contiene datos inválidos.";
-    return { issue: `${source}: ${firstIssue}` };
+    return { ok: false, issue: `${source}: ${firstIssue}` };
   }
 
   return {
+    ok: true,
     row: {
       ...parsed.data,
       source,
@@ -266,8 +271,8 @@ export async function importFuelDeliveriesAction(
   const workbook = new Workbook();
 
   try {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    await workbook.xlsx.load(bytes);
+    const buffer = Buffer.from(await file.arrayBuffer()) as unknown as WorkbookLoadInput;
+    await workbook.xlsx.load(buffer);
   } catch (error) {
     return actionError(reportError("importFuelDeliveries.load", error), {
       file: "No fue posible leer la planilla Excel.",
@@ -305,7 +310,7 @@ export async function importFuelDeliveriesAction(
 
       const source = `${worksheet.name}, fila ${rowNumber}`;
       const parsed = parseImportedRow(row, mapping, source, terminals);
-      if ("issue" in parsed) {
+      if (!parsed.ok) {
         issues.push(parsed.issue);
         continue;
       }
