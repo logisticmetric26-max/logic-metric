@@ -25,6 +25,12 @@ export const PERMISSIONS = {
     edit: "technical_review_not_sent.edit",
     delete: "technical_review_not_sent.delete",
   },
+  fuelCalendar: {
+    view: "fuel_calendar.view",
+    create: "fuel_calendar.create",
+    edit: "fuel_calendar.edit",
+    confirm: "fuel_calendar.confirm",
+  },
   fleet: {
     view: "fleet.view",
     create: "fleet.create",
@@ -77,6 +83,9 @@ export const PERMISSION_DEPENDENCIES: Readonly<
   [PERMISSIONS.notSent.create]: [PERMISSIONS.notSent.view],
   [PERMISSIONS.notSent.edit]: [PERMISSIONS.notSent.view],
   [PERMISSIONS.notSent.delete]: [PERMISSIONS.notSent.view],
+  [PERMISSIONS.fuelCalendar.create]: [PERMISSIONS.fuelCalendar.view],
+  [PERMISSIONS.fuelCalendar.edit]: [PERMISSIONS.fuelCalendar.view],
+  [PERMISSIONS.fuelCalendar.confirm]: [PERMISSIONS.fuelCalendar.view],
   [PERMISSIONS.fleet.create]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.fleet.edit]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.terminals.create]: [PERMISSIONS.terminals.view],

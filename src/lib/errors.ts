@@ -43,6 +43,11 @@ const MESSAGES: Record<string, string> = {
   INVALID_RUT: "El RUT ingresado no es válido.",
   TERMINAL_NAME_REQUIRED: "Debe ingresar el nombre del terminal.",
   DRIVER_NAME_REQUIRED: "Debe ingresar el nombre del conductor.",
+  FUEL_DELIVERY_ALREADY_CONFIRMED: "Una llegada ya confirmada no puede modificarse.",
+  FUEL_DELIVERY_CONFIRMATION_REQUIRED: "Debe confirmar la llegada con fecha y responsable.",
+  FUEL_DELIVERY_EDIT_PERMISSION_REQUIRED: "No tiene permisos para reprogramar esta llegada.",
+  FUEL_DELIVERY_CONFIRM_PERMISSION_REQUIRED: "No tiene permisos para confirmar esta llegada.",
+  FUEL_DELIVERY_IMMUTABLE_FIELDS: "No es posible alterar los datos base del registro.",
 
   // Documentos / almacenamiento
   INVALID_STORAGE_PATH: "El documento no pudo ser almacenado correctamente.",
@@ -59,6 +64,7 @@ const CONSTRAINT_MESSAGES: Array<[RegExp, string]> = [
   [/terminals_name_unique_idx/, "Ya existe un terminal con ese nombre."],
   [/terminals_code_unique_idx/, "Ya existe un terminal con ese código."],
   [/roles_name_unique_idx/, "Ya existe un rol con ese nombre."],
+  [/fuel_delivery_unique_slot_idx/, "Ya existe una llegada programada para ese terminal, producto y ventana."],
   [/trd_event_type_unique_idx/, "Ya existe un documento de ese tipo en esta revisión."],
   [/tre_approved_requires_expiration/, "Debe ingresar una fecha de vencimiento."],
   [/tre_rejected_has_no_expiration/, "Una revisión rechazada no fija una nueva fecha de vencimiento."],

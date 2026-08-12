@@ -26,6 +26,9 @@ export type ExtractionMethod = "TEXT_LAYER" | "OCR" | "MIXED";
 export type DetectionSource = "TEXT_LAYER" | "OCR" | "MANUAL";
 export type RejectionOrigin = "AUTOMATIC" | "AUTOMATIC_EDITED" | "MANUAL";
 export type ExpirationStatus = "VALID" | "EXPIRING_SOON" | "EXPIRED" | "NO_RECORD";
+export type FuelDeliveryProduct = "FUEL" | "ADBLUE";
+export type FuelReceptionWindow = "AM" | "PM";
+export type FuelDeliveryAlertStatus = "UPCOMING" | "TODAY" | "OVERDUE" | "CONFIRMED";
 
 // -----------------------------------------------------------------------------
 // Filas
@@ -203,6 +206,28 @@ export type TechnicalReviewNotSentRow = {
   updated_at: string;
 }
 
+export type FuelDeliveryScheduleRow = {
+  id: string;
+  terminal_id: string;
+  request_reference: string;
+  delivery_address: string;
+  product_type: FuelDeliveryProduct;
+  product_label: string;
+  scheduled_date: string;
+  reception_window: FuelReceptionWindow;
+  reception_time_range: string;
+  supplier_name: string;
+  requested_quantity_m3: number;
+  truck_reference: string | null;
+  notes: string | null;
+  confirmed_at: string | null;
+  confirmed_by: string | null;
+  created_by: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type AuditLogRow = {
   id: number;
   user_id: string | null;
@@ -292,6 +317,34 @@ export type TechnicalReviewNotSentViewRow = {
   work_order_number: string | null;
   created_by: string;
   created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FuelDeliveryScheduleViewRow = {
+  id: string;
+  terminal_id: string;
+  terminal_name: string;
+  request_reference: string;
+  delivery_address: string;
+  product_type: FuelDeliveryProduct;
+  product_label: string;
+  scheduled_date: string;
+  reception_window: FuelReceptionWindow;
+  reception_time_range: string;
+  alert_deadline: string;
+  alert_status: FuelDeliveryAlertStatus;
+  supplier_name: string;
+  requested_quantity_m3: number;
+  truck_reference: string | null;
+  notes: string | null;
+  confirmed_at: string | null;
+  confirmed_by: string | null;
+  confirmed_by_name: string | null;
+  created_by: string;
+  created_by_name: string | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -527,6 +580,22 @@ export type Database = {
         Update: Partial<TechnicalReviewNotSentRow>;
         Relationships: [];
       };
+      fuel_delivery_schedules: {
+        Row: FuelDeliveryScheduleRow;
+        Insert: WithDefaults<
+          FuelDeliveryScheduleRow,
+          | "id"
+          | "confirmed_at"
+          | "confirmed_by"
+          | "truck_reference"
+          | "notes"
+          | "updated_by"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<FuelDeliveryScheduleRow>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: AuditLogRow;
         // La bitácora es de sólo lectura desde la aplicación: `authenticated`
@@ -542,6 +611,7 @@ export type Database = {
       fleet_view: ReadOnlyView<FleetViewRow>;
       technical_review_events_view: ReadOnlyView<TechnicalReviewEventViewRow>;
       technical_review_not_sent_view: ReadOnlyView<TechnicalReviewNotSentViewRow>;
+      fuel_delivery_schedule_view: ReadOnlyView<FuelDeliveryScheduleViewRow>;
       profiles_view: ReadOnlyView<ProfileViewRow>;
       roles_view: ReadOnlyView<RoleViewRow>;
     };

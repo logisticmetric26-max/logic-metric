@@ -1,4 +1,4 @@
-import { ClipboardCheck, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ClipboardCheck, Droplets, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 import { PERMISSIONS, type PermissionCode } from "@/lib/auth/permissions";
 
 /**
@@ -8,10 +8,8 @@ import { PERMISSIONS, type PermissionCode } from "@/lib/auth/permissions";
  * y sus permisos en una migración. No hay que tocar el layout, la sesión ni la
  * autenticación.
  *
- * El sidebar contiene SÓLO tres entradas. Todo lo relativo a revisión técnica
- * (historial, rechazados, vencimientos, no enviados, en revisión, resumen) vive
- * DENTRO de «Revisión Técnica» como navegación secundaria, nunca como opciones
- * del menú.
+ * Revisión técnica conserva su navegación secundaria interna. Los módulos
+ * operacionales principales viven al primer nivel del sidebar.
  */
 
 export interface NavItem {
@@ -33,6 +31,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     permissions: [PERMISSIONS.technicalReview.view, PERMISSIONS.notSent.view],
     group: "main",
     description: "Procesos, vencimientos e historial",
+  },
+  {
+    label: "Combustible",
+    href: "/combustible",
+    icon: Droplets,
+    permissions: [PERMISSIONS.fuelCalendar.view],
+    group: "main",
+    description: "Calendario de combustible y AdBlue",
   },
   {
     label: "Configuración",
@@ -61,7 +67,8 @@ export function visibleNavItems(permissions: readonly string[]): NavItem[] {
 /** Título legible de cada ruta, para migas de pan y encabezados. */
 export const ROUTE_LABELS: Record<string, string> = {
   "revision-tecnica": "Revisión Técnica",
-  "en-revision": "Enviar a planta",
+  combustible: "Combustible",
+  "en-revision": "En revisión",
   "no-enviados": "No enviados",
   rechazados: "Rechazados",
   vencimientos: "Vencimientos",
