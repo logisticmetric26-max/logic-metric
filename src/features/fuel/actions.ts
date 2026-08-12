@@ -266,7 +266,8 @@ export async function importFuelDeliveriesAction(
   const workbook = new Workbook();
 
   try {
-    await workbook.xlsx.load(Buffer.from(await file.arrayBuffer()));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await workbook.xlsx.load(bytes);
   } catch (error) {
     return actionError(reportError("importFuelDeliveries.load", error), {
       file: "No fue posible leer la planilla Excel.",
@@ -347,8 +348,8 @@ export async function importFuelDeliveriesAction(
   const supabase = await createClient();
   const terminalIds = [...new Set(importedRows.map((row) => row.terminal_id))];
   const dates = importedRows.map((row) => row.scheduled_date).sort();
-  const from = dates[0];
-  const to = dates[dates.length - 1];
+  const from = dates[0]!;
+  const to = dates[dates.length - 1]!;
 
   const { data: existingRows, error: existingError } = await supabase
     .from("fuel_delivery_schedules")
