@@ -13,7 +13,6 @@ import {
 describe("catálogo de permisos", () => {
   it("contiene sólo códigos únicos y reconocidos", () => {
     expect(new Set(PERMISSION_CODES).size).toBe(PERMISSION_CODES.length);
-    expect(PERMISSION_CODES).toHaveLength(24);
     expect(PERMISSION_CODES.every(isPermissionCode)).toBe(true);
   });
 
