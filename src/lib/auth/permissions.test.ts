@@ -72,4 +72,19 @@ describe("catálogo de permisos", () => {
 
     expect(remaining).toEqual(new Set([PERMISSIONS.notSent.view]));
   });
+
+  it("la carga masiva de combustible incluye acceso e insercion", () => {
+    const selected = grantPermissionWithDependencies(
+      new Set(),
+      PERMISSIONS.fuelCalendar.bulkImport,
+    );
+
+    expect(selected).toEqual(
+      new Set([
+        PERMISSIONS.fuelCalendar.bulkImport,
+        PERMISSIONS.fuelCalendar.view,
+        PERMISSIONS.fuelCalendar.create,
+      ]),
+    );
+  });
 });

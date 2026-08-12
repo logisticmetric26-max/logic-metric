@@ -30,6 +30,7 @@ export const PERMISSIONS = {
     create: "fuel_calendar.create",
     edit: "fuel_calendar.edit",
     confirm: "fuel_calendar.confirm",
+    bulkImport: "fuel_calendar.bulk_import",
   },
   fleet: {
     view: "fleet.view",
@@ -86,6 +87,10 @@ export const PERMISSION_DEPENDENCIES: Readonly<
   [PERMISSIONS.fuelCalendar.create]: [PERMISSIONS.fuelCalendar.view],
   [PERMISSIONS.fuelCalendar.edit]: [PERMISSIONS.fuelCalendar.view],
   [PERMISSIONS.fuelCalendar.confirm]: [PERMISSIONS.fuelCalendar.view],
+  [PERMISSIONS.fuelCalendar.bulkImport]: [
+    PERMISSIONS.fuelCalendar.view,
+    PERMISSIONS.fuelCalendar.create,
+  ],
   [PERMISSIONS.fleet.create]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.fleet.edit]: [PERMISSIONS.fleet.view],
   [PERMISSIONS.terminals.create]: [PERMISSIONS.terminals.view],

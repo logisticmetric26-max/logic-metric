@@ -26,6 +26,7 @@ import type { PermissionRow, RoleViewRow } from "@/types/database.types";
 
 const MODULE_LABELS: Record<string, string> = {
   technical_review: "Revisión técnica",
+  fuel_calendar: "Combustible",
   fleet: "Flota",
   terminals: "Terminales",
   access: "Acceso",

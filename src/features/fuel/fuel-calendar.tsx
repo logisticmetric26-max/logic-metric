@@ -12,6 +12,7 @@ import {
   Plus,
   Sun,
   Truck,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +25,10 @@ import { useToast } from "@/components/ui/toast";
 import {
   confirmFuelDeliveryAction,
   createFuelDeliveryAction,
+  importFuelDeliveriesAction,
   updateFuelDeliveryAction,
 } from "@/features/fuel/actions";
+import { FUEL_IMPORT_TEMPLATE_COLUMNS } from "@/features/fuel/import";
 import {
   DEFAULT_TIME_ZONE,
   formatDateOnly,
@@ -55,6 +58,7 @@ interface Props {
   canCreate: boolean;
   canEdit: boolean;
   canConfirm: boolean;
+  canBulkImport: boolean;
   rangeLabel: string;
   from: string;
   to: string;
@@ -67,6 +71,7 @@ export function FuelCalendar({
   canCreate,
   canEdit,
   canConfirm,
+  canBulkImport,
   rangeLabel,
   from,
   to,
@@ -74,6 +79,7 @@ export function FuelCalendar({
 }: Props) {
   const toast = useToast();
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<FuelDeliveryScheduleViewRow | null>(null);
   const [confirming, setConfirming] = useState<FuelDeliveryScheduleViewRow | null>(null);
   const [pending, startTransition] = useTransition();
@@ -108,6 +114,8 @@ export function FuelCalendar({
     });
   }
 
+  const hasPrimaryActions = canCreate || canBulkImport;
+
   return (
     <>
       <Card solid className="overflow-hidden">
@@ -128,13 +136,26 @@ export function FuelCalendar({
                 </p>
               </div>
 
-              {canCreate && (
-                <Button
-                  onClick={() => setCreating(true)}
-                  icon={<Plus className="size-4" aria-hidden />}
-                >
-                  Registrar solicitud
-                </Button>
+              {hasPrimaryActions && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {canBulkImport && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setImporting(true)}
+                      icon={<Upload className="size-4" aria-hidden />}
+                    >
+                      Carga masiva
+                    </Button>
+                  )}
+                  {canCreate && (
+                    <Button
+                      onClick={() => setCreating(true)}
+                      icon={<Plus className="size-4" aria-hidden />}
+                    >
+                      Registrar solicitud
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -292,18 +313,31 @@ export function FuelCalendar({
               icon={<Truck className="size-5" aria-hidden />}
               title="No hay llegadas programadas en este rango"
               description={
-                canCreate
-                  ? "Programe recepciones de combustible o AdBlue para empezar a poblar la agenda."
+                hasPrimaryActions
+                  ? "Registre o importe recepciones de combustible y AdBlue para empezar a poblar la agenda."
                   : "Ajuste el rango o espere nuevas programaciones en sus terminales autorizados."
               }
               action={
-                canCreate ? (
-                  <Button
-                    onClick={() => setCreating(true)}
-                    icon={<Plus className="size-4" aria-hidden />}
-                  >
-                    Registrar solicitud
-                  </Button>
+                hasPrimaryActions ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {canBulkImport && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setImporting(true)}
+                        icon={<Upload className="size-4" aria-hidden />}
+                      >
+                        Carga masiva
+                      </Button>
+                    )}
+                    {canCreate && (
+                      <Button
+                        onClick={() => setCreating(true)}
+                        icon={<Plus className="size-4" aria-hidden />}
+                      >
+                        Registrar solicitud
+                      </Button>
+                    )}
+                  </div>
                 ) : undefined
               }
             />
@@ -327,6 +361,17 @@ export function FuelCalendar({
           </div>
         )}
       </div>
+
+      {canBulkImport && importing && (
+        <FuelBulkImportModal
+          open
+          onClose={() => setImporting(false)}
+          onSaved={(inserted) => {
+            setImporting(false);
+            toast.success(`${formatNumber(inserted)} solicitudes importadas correctamente.`);
+          }}
+        />
+      )}
 
       {canCreate && (
         <FuelDeliveryFormModal
@@ -667,6 +712,129 @@ function MiniMetric({
       </p>
       <p className="mt-2 text-[11px] text-ink-muted">{sublabel}</p>
     </div>
+  );
+}
+
+function FuelBulkImportModal({
+  open,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: (inserted: number) => void;
+}) {
+  const toast = useToast();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [issues, setIssues] = useState<string[]>([]);
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFieldErrors({});
+    setIssues([]);
+
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      const result = await importFuelDeliveriesAction(formData);
+
+      if (!result.ok) {
+        const nextErrors = result.fieldErrors ?? {};
+        setFieldErrors(nextErrors);
+        setIssues(
+          nextErrors.file_details
+            ? nextErrors.file_details.split("\n").filter(Boolean)
+            : [],
+        );
+        toast.error(result.error);
+        return;
+      }
+
+      onSaved(result.data.inserted);
+    });
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      busy={pending}
+      size="lg"
+      title="Carga masiva de combustible"
+      description="Importe solicitudes de combustible y AdBlue desde una planilla Excel. La carga es completa: si una fila falla, no se inserta ninguna."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="fuel-import-form" loading={pending}>
+            Importar planilla
+          </Button>
+        </>
+      }
+    >
+      <form id="fuel-import-form" onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+        <Alert tone="warning" title="Solo Excel">
+          Use una planilla `.xlsx` similar a la muestra operacional. Se aceptan hasta 500 filas por carga.
+        </Alert>
+
+        <Field
+          label="Archivo Excel"
+          required
+          error={fieldErrors.file}
+          htmlFor="fuel-import-file"
+          hint="Columnas requeridas: terminal, solicitud, direccion, producto, fecha, ventana, horario, razon social y cantidad."
+        >
+          <Input
+            id="fuel-import-file"
+            name="file"
+            type="file"
+            accept=".xlsx,.xlsm,.xltx,.xltm"
+            invalid={Boolean(fieldErrors.file)}
+            required
+          />
+        </Field>
+
+        {issues.length > 0 && (
+          <Alert tone="danger" title="Observaciones de la planilla">
+            <ul className="space-y-1 text-sm">
+              {issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+
+        <div className="rounded-2xl border border-border bg-surface-subtle/65 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">Columnas esperadas</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Puede usar encabezados equivalentes, pero esta estructura coincide con la muestra esperada.
+              </p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-ink-secondary">
+              {FUEL_IMPORT_TEMPLATE_COLUMNS.length} columnas
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {FUEL_IMPORT_TEMPLATE_COLUMNS.map((column) => (
+              <div key={column.key} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[13px] font-medium text-ink">{column.label}</p>
+                  <Badge tone={column.required ? "warning" : "neutral"}>
+                    {column.required ? "Obligatoria" : "Opcional"}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-[11px] text-ink-muted">{column.example}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

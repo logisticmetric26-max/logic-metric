@@ -88,6 +88,7 @@ export default async function CombustiblePage({
       canCreate={context.permissions.includes(PERMISSIONS.fuelCalendar.create)}
       canEdit={context.permissions.includes(PERMISSIONS.fuelCalendar.edit)}
       canConfirm={context.permissions.includes(PERMISSIONS.fuelCalendar.confirm)}
+      canBulkImport={context.permissions.includes(PERMISSIONS.fuelCalendar.bulkImport)}
       rangeLabel={rangeLabel}
       from={from}
       to={to}

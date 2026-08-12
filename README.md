@@ -293,6 +293,7 @@ Permisos disponibles:
 technical_review.view / create / close / delete
 technical_review_documents.view / upload
 technical_review_not_sent.view / create / edit / delete
+fuel_calendar.view / create / bulk_import / edit / confirm
 fleet.view / create / edit
 terminals.view / create / edit / delete
 users.view / create / edit / suspend / delete

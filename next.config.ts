@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
+
   /**
    * Dependencias del análisis documental que corren en el runtime de Node y no
    * deben empaquetarse:
