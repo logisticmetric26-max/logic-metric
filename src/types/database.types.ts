@@ -137,6 +137,7 @@ export type BusWashRecordRow = {
   bm_completed: boolean;
   body_wash_completed: boolean;
   in_repair: boolean;
+  no_wash: boolean;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -533,6 +534,7 @@ export type Database = {
           | "bm_completed"
           | "body_wash_completed"
           | "in_repair"
+          | "no_wash"
           | "created_by"
           | "updated_by"
           | "created_at"

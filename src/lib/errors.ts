@@ -49,6 +49,8 @@ const MESSAGES: Record<string, string> = {
   FUEL_DELIVERY_CONFIRM_PERMISSION_REQUIRED: "No tiene permisos para confirmar esta llegada.",
   FUEL_DELIVERY_IMMUTABLE_FIELDS: "No es posible alterar los datos base del registro.",
   BUS_WASH_IMMUTABLE_FIELDS: "No es posible alterar los datos base del registro diario.",
+  BUS_WASH_REDVAN_NOT_ALLOWED: "Los buses Redvan no se contemplan en el registro de lavado.",
+  BUS_WASH_EMPTY_RECORD: "Debe indicar al menos un estado para el bus.",
 
   // Documentos / almacenamiento
   INVALID_STORAGE_PATH: "El documento no pudo ser almacenado correctamente.",
@@ -67,6 +69,7 @@ const CONSTRAINT_MESSAGES: Array<[RegExp, string]> = [
   [/roles_name_unique_idx/, "Ya existe un rol con ese nombre."],
   [/fuel_delivery_unique_slot_idx/, "Ya existe una llegada programada para ese terminal, producto y ventana."],
   [/bus_wash_records_fleet_date_idx/, "Ya existe un registro diario para este bus."],
+  [/bus_wash_records_meaningful_check/, "Debe indicar al menos un estado para el bus."],
   [/trd_event_type_unique_idx/, "Ya existe un documento de ese tipo en esta revisión."],
   [/tre_approved_requires_expiration/, "Debe ingresar una fecha de vencimiento."],
   [/tre_rejected_has_no_expiration/, "Una revisión rechazada no fija una nueva fecha de vencimiento."],

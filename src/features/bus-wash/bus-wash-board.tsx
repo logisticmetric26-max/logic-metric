@@ -1,7 +1,7 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState, useTransition } from "react";
-import { Bus, Check, Search, Sparkles } from "lucide-react";
+import { useDeferredValue, useMemo, useState, useTransition, type FormEvent } from "react";
+import { Bus, Check, Download, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge, ActiveBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -23,9 +23,15 @@ export interface BusWashListRow {
   bm_completed: boolean;
   body_wash_completed: boolean;
   in_repair: boolean;
+  no_wash: boolean;
   had_body_wash_yesterday: boolean;
   updated_at: string | null;
 }
+
+type BusWashFlags = Pick<
+  BusWashListRow,
+  "bm_completed" | "body_wash_completed" | "in_repair" | "no_wash"
+>;
 
 export function BusWashBoard({
   initialRows,
@@ -54,18 +60,8 @@ export function BusWashBoard({
     );
   }, [deferredQuery, rows]);
 
-  const groupedRows = useMemo(() => {
-    const grouped = new Map<string, BusWashListRow[]>();
-
-    for (const row of filteredRows) {
-      const key = row.zone?.trim() || "Sin zona";
-      const bucket = grouped.get(key);
-      if (bucket) bucket.push(row);
-      else grouped.set(key, [row]);
-    }
-
-    return [...grouped.entries()];
-  }, [filteredRows]);
+  const groupedRows = useMemo(() => [...groupRowsByZone(filteredRows).entries()], [filteredRows]);
+  const allRowsByZone = useMemo(() => groupRowsByZone(rows), [rows]);
 
   const summary = useMemo(
     () => ({
@@ -73,15 +69,13 @@ export function BusWashBoard({
       bm: filteredRows.filter((row) => row.bm_completed).length,
       bodyWash: filteredRows.filter((row) => row.body_wash_completed).length,
       inRepair: filteredRows.filter((row) => row.in_repair).length,
+      noWash: filteredRows.filter((row) => row.no_wash).length,
     }),
     [filteredRows],
   );
 
-  function updateRow(
-    row: BusWashListRow,
-    patch: Pick<BusWashListRow, "bm_completed" | "body_wash_completed" | "in_repair">,
-  ) {
-    const next = { ...row, ...patch };
+  function updateRow(row: BusWashListRow, patch: BusWashFlags) {
+    const next = normalizeFlags({ ...row, ...patch });
     setSavingId(row.id);
 
     startTransition(async () => {
@@ -92,6 +86,7 @@ export function BusWashBoard({
         bm_completed: next.bm_completed,
         body_wash_completed: next.body_wash_completed,
         in_repair: next.in_repair,
+        no_wash: next.no_wash,
       });
 
       setSavingId(null);
@@ -109,12 +104,38 @@ export function BusWashBoard({
                 bm_completed: result.data.bm_completed,
                 body_wash_completed: result.data.body_wash_completed,
                 in_repair: result.data.in_repair,
+                no_wash: result.data.no_wash,
                 updated_at: result.data.updated_at,
               }
             : item,
         ),
       );
     });
+  }
+
+  function handleLoadDaySubmit(event: FormEvent<HTMLFormElement>) {
+    if (!canEdit) return;
+
+    const incompleteRows = rows.filter((row) => !hasAnyStatus(row));
+    if (incompleteRows.length === 0) return;
+
+    event.preventDefault();
+    window.alert(
+      `El registro del dia no esta completo. Faltan ${formatNumber(incompleteRows.length)} buses por registrar.`,
+    );
+  }
+
+  function handleZoneExport(zone: string) {
+    const zoneRows = allRowsByZone.get(zone) ?? [];
+    const incompleteRows = zoneRows.filter((row) => !hasAnyStatus(row));
+
+    if (incompleteRows.length > 0) {
+      window.alert(`El registro del dia de la zona ${zone} no esta completo.`);
+      return;
+    }
+
+    downloadZoneCsv(zoneRows, zone, date);
+    toast.success(`Archivo ${date} ${zone} generado.`);
   }
 
   return (
@@ -130,8 +151,8 @@ export function BusWashBoard({
               Lavado Buses
             </h2>
             <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-muted">
-              Registro diario por bus para barrido y mopeado, lavado de carroceria y estado en
-              reparacion, ordenado por zona operacional.
+              Registro diario por bus para barrido y mopeado, lavado de carroceria, estado en
+              reparacion y buses sin lavado, ordenado por zona operacional.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -139,9 +160,9 @@ export function BusWashBoard({
               <MetricPill label="Flota visible" value={formatNumber(summary.total)} hint="Buses en pantalla" tone="brand" />
               <MetricPill label="B&M" value={formatNumber(summary.bm)} hint="Marcados como realizados" tone="success" />
               <MetricPill
-                label="Lavado / reparacion"
-                value={`${formatNumber(summary.bodyWash)} / ${formatNumber(summary.inRepair)}`}
-                hint="Carroceria / reparacion"
+                label="Lavado / rep. / sin"
+                value={`${formatNumber(summary.bodyWash)} / ${formatNumber(summary.inRepair)} / ${formatNumber(summary.noWash)}`}
+                hint="Carroceria / reparacion / sin lavado"
                 tone="warning"
               />
             </div>
@@ -149,7 +170,12 @@ export function BusWashBoard({
 
           <div className="grid gap-3">
             <Card solid className="border-slate-200/80 bg-white/85">
-              <form action="/lavado-buses" method="get" className="grid gap-3 p-4 sm:grid-cols-[1fr_auto]">
+              <form
+                action="/lavado-buses"
+                method="get"
+                onSubmit={handleLoadDaySubmit}
+                className="grid gap-3 p-4 sm:grid-cols-[1fr_auto]"
+              >
                 <Field label="Dia de registro" htmlFor="bus-wash-date">
                   <Input id="bus-wash-date" name="fecha" type="date" defaultValue={date} required />
                 </Field>
@@ -195,104 +221,148 @@ export function BusWashBoard({
           />
         </Card>
       ) : (
-        groupedRows.map(([zone, zoneRows]) => (
-          <Card key={zone} solid className="overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-subtle/55 px-4 py-3 sm:px-5">
-              <div>
-                <p className="text-[16px] font-semibold tracking-[-0.02em] text-ink">{zone}</p>
-                <p className="mt-0.5 text-[12px] text-ink-muted">
-                  {formatNumber(zoneRows.length)} bus{zoneRows.length === 1 ? "" : "es"}
-                </p>
-              </div>
-              <Badge tone="neutral">{formatNumber(zoneRows.filter((row) => row.in_repair).length)} en reparacion</Badge>
-            </div>
+        groupedRows.map(([zone, zoneRows]) => {
+          const allZoneRows = allRowsByZone.get(zone) ?? zoneRows;
+          const incompleteCount = allZoneRows.filter((row) => !hasAnyStatus(row)).length;
+          const repairCount = allZoneRows.filter((row) => row.in_repair).length;
+          const noWashCount = allZoneRows.filter((row) => row.no_wash).length;
 
-            <div className="divide-y divide-border">
-              {zoneRows.map((row) => {
-                const isSaving = pending && savingId === row.id;
+          return (
+            <Card key={zone} solid className="overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-subtle/55 px-4 py-3 sm:px-5">
+                <div>
+                  <p className="text-[16px] font-semibold tracking-[-0.02em] text-ink">{zone}</p>
+                  <p className="mt-0.5 text-[12px] text-ink-muted">
+                    {formatNumber(zoneRows.length)} bus{zoneRows.length === 1 ? "" : "es"}
+                  </p>
+                </div>
 
-                return (
-                  <div
-                    key={row.id}
-                    className={cn(
-                      "grid gap-4 px-4 py-4 sm:px-5 xl:grid-cols-[minmax(16rem,1.15fr)_minmax(0,1fr)] xl:items-center",
-                      !row.active && "bg-surface-subtle/35",
-                    )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={incompleteCount === 0 ? "success" : "warning"}>
+                    {incompleteCount === 0
+                      ? "Registro completo"
+                      : `${formatNumber(incompleteCount)} pendientes`}
+                  </Badge>
+                  <Badge tone="neutral">{formatNumber(repairCount)} en reparacion</Badge>
+                  <Badge tone="danger">{formatNumber(noWashCount)} sin lavado</Badge>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Download className="size-4" aria-hidden />}
+                    disabled={pending}
+                    onClick={() => handleZoneExport(zone)}
                   >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[15px] font-semibold tracking-[-0.015em] text-ink">
-                          Bus {row.internal_number}
+                    Cargar dia
+                  </Button>
+                </div>
+              </div>
+
+              <div className="divide-y divide-border">
+                {zoneRows.map((row) => {
+                  const isSaving = pending && savingId === row.id;
+
+                  return (
+                    <div
+                      key={row.id}
+                      className={cn(
+                        "grid gap-4 px-4 py-4 sm:px-5 xl:grid-cols-[minmax(16rem,1.15fr)_minmax(0,1fr)] xl:items-center",
+                        !row.active && "bg-surface-subtle/35",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[15px] font-semibold tracking-[-0.015em] text-ink">
+                            Bus {row.internal_number}
+                          </p>
+                          <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary ring-1 ring-border">
+                            {row.ppu}
+                          </span>
+                          <ActiveBadge active={row.active} />
+                          {row.in_repair && <Badge tone="warning">En reparacion</Badge>}
+                          {row.no_wash && <Badge tone="danger">Sin lavado</Badge>}
+                        </div>
+                        <p className="mt-1 text-[12px] text-ink-muted">
+                          {row.terminal_name} - Zona {row.zone?.trim() || "Sin zona"}
                         </p>
-                        <span className="rounded-md bg-fill-subtle px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary ring-1 ring-border">
-                          {row.ppu}
-                        </span>
-                        <ActiveBadge active={row.active} />
-                        {row.in_repair && <Badge tone="warning">En reparacion</Badge>}
+                        <p className="mt-2 text-[11px] text-ink-muted">
+                          {row.updated_at
+                            ? `Ultima actualizacion: ${formatDateTime(row.updated_at)}`
+                            : "Sin marcas registradas para este dia."}
+                        </p>
                       </div>
-                      <p className="mt-1 text-[12px] text-ink-muted">
-                        {row.terminal_name} · Zona {row.zone?.trim() || "Sin zona"}
-                      </p>
-                      <p className="mt-2 text-[11px] text-ink-muted">
-                        {row.updated_at
-                          ? `Ultima actualizacion: ${formatDateTime(row.updated_at)}`
-                          : "Sin marcas registradas para este dia."}
-                      </p>
-                    </div>
 
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <CheckItem
-                        label="B&M"
-                        description={row.in_repair ? "Sin registrar por reparacion" : "Barrido y mopeado"}
-                        checked={row.bm_completed}
-                        disabled={!canEdit || isSaving || row.in_repair}
-                        onChange={(checked) =>
-                          updateRow(row, {
-                            bm_completed: checked,
-                            body_wash_completed: row.body_wash_completed,
-                            in_repair: row.in_repair,
-                          })
-                        }
-                      />
-                      <CheckItem
-                        label={row.had_body_wash_yesterday ? "Lavado - lavado ayer" : "Lavado"}
-                        description={row.in_repair ? "Sin registrar por reparacion" : "Carroceria"}
-                        checked={row.body_wash_completed}
-                        disabled={!canEdit || isSaving || row.in_repair}
-                        emphasizeYesterday={row.had_body_wash_yesterday}
-                        onChange={(checked) =>
-                          updateRow(row, {
-                            bm_completed: row.bm_completed,
-                            body_wash_completed: checked,
-                            in_repair: row.in_repair,
-                          })
-                        }
-                      />
-                      <CheckItem
-                        label="Reparacion"
-                        description="Bus detenido"
-                        checked={row.in_repair}
-                        disabled={!canEdit || isSaving}
-                        tone="warning"
-                        onChange={(checked) =>
-                          updateRow(row, {
-                            bm_completed: checked ? false : row.bm_completed,
-                            body_wash_completed: checked ? false : row.body_wash_completed,
-                            in_repair: checked,
-                          })
-                        }
-                      />
-                    </div>
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        <CheckItem
+                          label="B&M"
+                          description={row.in_repair ? "Sin registrar por reparacion" : "Barrido y mopeado"}
+                          checked={row.bm_completed}
+                          disabled={!canEdit || isSaving || row.in_repair}
+                          onChange={(checked) =>
+                            updateRow(row, {
+                              bm_completed: checked,
+                              body_wash_completed: row.body_wash_completed,
+                              in_repair: row.in_repair,
+                              no_wash: checked ? false : row.no_wash,
+                            })
+                          }
+                        />
+                        <CheckItem
+                          label={row.had_body_wash_yesterday ? "Lavado - lavado ayer" : "Lavado"}
+                          description={row.in_repair ? "Sin registrar por reparacion" : "Carroceria"}
+                          checked={row.body_wash_completed}
+                          disabled={!canEdit || isSaving || row.in_repair}
+                          emphasizeYesterday={row.had_body_wash_yesterday}
+                          onChange={(checked) =>
+                            updateRow(row, {
+                              bm_completed: row.bm_completed,
+                              body_wash_completed: checked,
+                              in_repair: row.in_repair,
+                              no_wash: checked ? false : row.no_wash,
+                            })
+                          }
+                        />
+                        <CheckItem
+                          label="Reparacion"
+                          description="Bus detenido"
+                          checked={row.in_repair}
+                          disabled={!canEdit || isSaving}
+                          tone="warning"
+                          onChange={(checked) =>
+                            updateRow(row, {
+                              bm_completed: checked ? false : row.bm_completed,
+                              body_wash_completed: checked ? false : row.body_wash_completed,
+                              in_repair: checked,
+                              no_wash: false,
+                            })
+                          }
+                        />
+                        <CheckItem
+                          label="Sin lavado"
+                          description={row.in_repair ? "No disponible por reparacion" : "Bus sin lavado"}
+                          checked={row.no_wash}
+                          disabled={!canEdit || isSaving || row.in_repair}
+                          tone="danger"
+                          onChange={(checked) =>
+                            updateRow(row, {
+                              bm_completed: checked ? false : row.bm_completed,
+                              body_wash_completed: checked ? false : row.body_wash_completed,
+                              in_repair: false,
+                              no_wash: checked,
+                            })
+                          }
+                        />
+                      </div>
 
-                    {isSaving && (
-                      <p className="xl:col-span-2 text-[11px] font-medium text-ink-muted">Guardando...</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        ))
+                      {isSaving && (
+                        <p className="xl:col-span-2 text-[11px] font-medium text-ink-muted">Guardando...</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })
       )}
     </div>
   );
@@ -311,18 +381,26 @@ function CheckItem({
   description: string;
   checked: boolean;
   disabled: boolean;
-  tone?: "success" | "warning";
+  tone?: "success" | "warning" | "danger";
   emphasizeYesterday?: boolean;
   onChange: (checked: boolean) => void;
 }) {
+  const checkedClass =
+    tone === "warning"
+      ? "border-warning-200 bg-warning-50/80"
+      : tone === "danger"
+        ? "border-danger-200 bg-danger-50/80"
+        : "border-success-200 bg-success-50/80";
+
+  const iconClass =
+    tone === "warning" ? "text-warning-700" : tone === "danger" ? "text-danger-700" : "text-brand-600";
+
   return (
     <label
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-colors",
         checked
-          ? tone === "warning"
-            ? "border-warning-200 bg-warning-50/80"
-            : "border-success-200 bg-success-50/80"
+          ? checkedClass
           : emphasizeYesterday
             ? "border-danger-200 bg-danger-50/75"
             : "border-border bg-surface",
@@ -338,7 +416,7 @@ function CheckItem({
       />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
-          {checked && <Check className="size-3.5 text-brand-600" aria-hidden />}
+          {checked && <Check className={cn("size-3.5", iconClass)} aria-hidden />}
           {label}
         </span>
         <span className="block text-[11px] text-ink-muted">{description}</span>
@@ -374,4 +452,104 @@ function MetricPill({
       <p className="mt-2 text-[11px] text-ink-muted">{hint}</p>
     </div>
   );
+}
+
+function groupRowsByZone(sourceRows: BusWashListRow[]) {
+  const grouped = new Map<string, BusWashListRow[]>();
+
+  for (const row of sourceRows) {
+    const key = normalizeZoneLabel(row.zone);
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(row);
+    else grouped.set(key, [row]);
+  }
+
+  return grouped;
+}
+
+function normalizeFlags(row: BusWashFlags): BusWashFlags {
+  if (row.in_repair) {
+    return {
+      ...row,
+      bm_completed: false,
+      body_wash_completed: false,
+      no_wash: false,
+    };
+  }
+
+  if (row.no_wash) {
+    return {
+      ...row,
+      bm_completed: false,
+      body_wash_completed: false,
+      in_repair: false,
+    };
+  }
+
+  return row;
+}
+
+function hasAnyStatus(row: BusWashFlags) {
+  return row.bm_completed || row.body_wash_completed || row.in_repair || row.no_wash;
+}
+
+function normalizeZoneLabel(zone: string | null | undefined) {
+  return zone?.trim() || "Sin zona";
+}
+
+function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, date: string) {
+  const lines = [
+    "Registro de lavado de buses",
+    [
+      "N\u00famero Interno",
+      "PPU",
+      "Fecha",
+      "Zona",
+      "terminal",
+      "B y M",
+      "L. Carrocer\u00eda",
+      "en Reparacion",
+    ]
+      .map(escapeCsv)
+      .join(","),
+    ...zoneRows.map((row) =>
+      [
+        row.internal_number,
+        row.ppu,
+        formatDateOnly(date),
+        zone,
+        zone,
+        row.bm_completed ? "1" : "0",
+        row.body_wash_completed ? "1" : "0",
+        row.in_repair ? "1" : "0",
+      ]
+        .map(escapeCsv)
+        .join(","),
+    ),
+  ];
+
+  const blob = new Blob([`\uFEFF${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `${date}_${toFileSegment(zone)}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsv(value: string) {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function toFileSegment(value: string) {
+  const sanitized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return sanitized || "SIN_ZONA";
 }

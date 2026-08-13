@@ -13,6 +13,7 @@ type BusWashActionPayload = {
   bm_completed: boolean;
   body_wash_completed: boolean;
   in_repair: boolean;
+  no_wash: boolean;
   updated_at: string | null;
 };
 
@@ -30,11 +31,23 @@ export async function saveBusWashRecordAction(
     return actionError("Revise los datos ingresados.");
   }
 
-  const payload = parsed.data.in_repair
-    ? { ...parsed.data, bm_completed: false, body_wash_completed: false }
-    : parsed.data;
-  const hasAnyFlag = payload.bm_completed || payload.body_wash_completed || payload.in_repair;
   const supabase = await createClient();
+  const payload = normalizeBusWashPayload(parsed.data);
+
+  const { data: fleet, error: fleetError } = await supabase
+    .from("fleet")
+    .select("terminal_id, zone")
+    .eq("id", payload.fleet_id)
+    .maybeSingle();
+
+  if (fleetError) return actionError(reportError("readBusWashFleet", fleetError));
+  if (!fleet) return actionError("El bus indicado no existe o no esta disponible.");
+  if (normalizeZone(fleet.zone) === "REDVAN") {
+    return actionError("Los buses Redvan no se contemplan en el registro de lavado.");
+  }
+
+  const hasAnyFlag =
+    payload.bm_completed || payload.body_wash_completed || payload.in_repair || payload.no_wash;
 
   if (!hasAnyFlag) {
     const { error } = await supabase
@@ -50,6 +63,7 @@ export async function saveBusWashRecordAction(
       bm_completed: false,
       body_wash_completed: false,
       in_repair: false,
+      no_wash: false,
       updated_at: null,
     });
   }
@@ -70,10 +84,11 @@ export async function saveBusWashRecordAction(
         bm_completed: payload.bm_completed,
         body_wash_completed: payload.body_wash_completed,
         in_repair: payload.in_repair,
+        no_wash: payload.no_wash,
         updated_by: context.profile.id,
       })
       .eq("id", current.id)
-      .select("bm_completed, body_wash_completed, in_repair, updated_at")
+      .select("bm_completed, body_wash_completed, in_repair, no_wash, updated_at")
       .single();
 
     if (error) return actionError(reportError("updateBusWashRecord", error));
@@ -86,19 +101,46 @@ export async function saveBusWashRecordAction(
     .from("bus_wash_records")
     .insert({
       fleet_id: payload.fleet_id,
-      terminal_id: payload.terminal_id,
+      terminal_id: fleet.terminal_id,
       record_date: payload.record_date,
       bm_completed: payload.bm_completed,
       body_wash_completed: payload.body_wash_completed,
       in_repair: payload.in_repair,
+      no_wash: payload.no_wash,
       created_by: context.profile.id,
       updated_by: context.profile.id,
     })
-    .select("bm_completed, body_wash_completed, in_repair, updated_at")
+    .select("bm_completed, body_wash_completed, in_repair, no_wash, updated_at")
     .single();
 
   if (error) return actionError(reportError("createBusWashRecord", error));
 
   revalidatePath(BUS_WASH_PATH);
   return actionSuccess(data);
+}
+
+function normalizeBusWashPayload(input: BusWashRecordInput): BusWashRecordInput {
+  if (input.in_repair) {
+    return {
+      ...input,
+      bm_completed: false,
+      body_wash_completed: false,
+      no_wash: false,
+    };
+  }
+
+  if (input.no_wash) {
+    return {
+      ...input,
+      bm_completed: false,
+      body_wash_completed: false,
+      in_repair: false,
+    };
+  }
+
+  return input;
+}
+
+function normalizeZone(value: string | null | undefined) {
+  return value?.trim().toUpperCase() ?? "";
 }

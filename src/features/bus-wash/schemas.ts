@@ -8,6 +8,7 @@ export const busWashRecordSchema = z.object({
   bm_completed: z.boolean(),
   body_wash_completed: z.boolean(),
   in_repair: z.boolean(),
+  no_wash: z.boolean(),
 });
 
 export type BusWashRecordInput = z.infer<typeof busWashRecordSchema>;
