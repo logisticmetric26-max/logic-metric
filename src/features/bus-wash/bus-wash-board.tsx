@@ -23,6 +23,7 @@ export interface BusWashListRow {
   bm_completed: boolean;
   body_wash_completed: boolean;
   in_repair: boolean;
+  had_body_wash_yesterday: boolean;
   updated_at: string | null;
 }
 
@@ -254,10 +255,11 @@ export function BusWashBoard({
                         }
                       />
                       <CheckItem
-                        label="Lavado"
+                        label={row.had_body_wash_yesterday ? "Lavado - lavado ayer" : "Lavado"}
                         description="Carroceria"
                         checked={row.body_wash_completed}
                         disabled={!canEdit || isSaving}
+                        emphasizeYesterday={row.had_body_wash_yesterday}
                         onChange={(checked) =>
                           updateRow(row, {
                             bm_completed: row.bm_completed,
@@ -302,6 +304,7 @@ function CheckItem({
   checked,
   disabled,
   tone = "success",
+  emphasizeYesterday = false,
   onChange,
 }: {
   label: string;
@@ -309,6 +312,7 @@ function CheckItem({
   checked: boolean;
   disabled: boolean;
   tone?: "success" | "warning";
+  emphasizeYesterday?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
@@ -319,7 +323,9 @@ function CheckItem({
           ? tone === "warning"
             ? "border-warning-200 bg-warning-50/80"
             : "border-success-200 bg-success-50/80"
-          : "border-border bg-surface",
+          : emphasizeYesterday
+            ? "border-danger-200 bg-danger-50/75"
+            : "border-border bg-surface",
         disabled && "cursor-not-allowed opacity-70",
       )}
     >

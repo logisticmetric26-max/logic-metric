@@ -23,11 +23,16 @@ export default async function LavadoBusesPage({
   const context = await requirePermission(PERMISSIONS.busWash.view);
   const params = await searchParams;
   const date = params.fecha && DATE_PATTERN.test(params.fecha) ? params.fecha : todayInZone();
+  const previousDate = subtractDaysFromDateOnly(date, 1);
 
   const supabase = await createClient();
 
   try {
-    const [{ data: fleet, error: fleetError }, { data: records, error: recordsError }] =
+    const [
+      { data: fleet, error: fleetError },
+      { data: records, error: recordsError },
+      { data: previousDayRecords, error: previousDayRecordsError },
+    ] =
       await Promise.all([
         supabase
           .from("fleet_view")
@@ -38,12 +43,21 @@ export default async function LavadoBusesPage({
           .from("bus_wash_records")
           .select("fleet_id, bm_completed, body_wash_completed, in_repair, updated_at")
           .eq("record_date", date),
+        supabase
+          .from("bus_wash_records")
+          .select("fleet_id, body_wash_completed")
+          .eq("record_date", previousDate)
+          .eq("body_wash_completed", true),
       ]);
 
     if (fleetError) throw fleetError;
     if (recordsError) throw recordsError;
+    if (previousDayRecordsError) throw previousDayRecordsError;
 
     const recordMap = new Map((records ?? []).map((record) => [record.fleet_id, record]));
+    const previousDayBodyWashSet = new Set(
+      (previousDayRecords ?? []).map((record) => record.fleet_id),
+    );
     const rows: BusWashListRow[] = (fleet ?? []).map((bus) => {
       const record = recordMap.get(bus.id);
 
@@ -58,6 +72,7 @@ export default async function LavadoBusesPage({
         bm_completed: record?.bm_completed ?? false,
         body_wash_completed: record?.body_wash_completed ?? false,
         in_repair: record?.in_repair ?? false,
+        had_body_wash_yesterday: previousDayBodyWashSet.has(bus.id),
         updated_at: record?.updated_at ?? null,
       };
     });
@@ -73,4 +88,16 @@ export default async function LavadoBusesPage({
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
   }
+}
+
+function subtractDaysFromDateOnly(value: string, days: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1, 12, 0, 0);
+  date.setDate(date.getDate() - days);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
