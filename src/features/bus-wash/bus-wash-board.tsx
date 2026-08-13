@@ -243,9 +243,9 @@ export function BusWashBoard({
                     <div className="grid gap-2 sm:grid-cols-3">
                       <CheckItem
                         label="B&M"
-                        description="Barrido y mopeado"
+                        description={row.in_repair ? "Sin registrar por reparacion" : "Barrido y mopeado"}
                         checked={row.bm_completed}
-                        disabled={!canEdit || isSaving}
+                        disabled={!canEdit || isSaving || row.in_repair}
                         onChange={(checked) =>
                           updateRow(row, {
                             bm_completed: checked,
@@ -256,9 +256,9 @@ export function BusWashBoard({
                       />
                       <CheckItem
                         label={row.had_body_wash_yesterday ? "Lavado - lavado ayer" : "Lavado"}
-                        description="Carroceria"
+                        description={row.in_repair ? "Sin registrar por reparacion" : "Carroceria"}
                         checked={row.body_wash_completed}
-                        disabled={!canEdit || isSaving}
+                        disabled={!canEdit || isSaving || row.in_repair}
                         emphasizeYesterday={row.had_body_wash_yesterday}
                         onChange={(checked) =>
                           updateRow(row, {
@@ -276,8 +276,8 @@ export function BusWashBoard({
                         tone="warning"
                         onChange={(checked) =>
                           updateRow(row, {
-                            bm_completed: row.bm_completed,
-                            body_wash_completed: row.body_wash_completed,
+                            bm_completed: checked ? false : row.bm_completed,
+                            body_wash_completed: checked ? false : row.body_wash_completed,
                             in_repair: checked,
                           })
                         }

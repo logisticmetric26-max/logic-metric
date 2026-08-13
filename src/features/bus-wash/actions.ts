@@ -30,7 +30,9 @@ export async function saveBusWashRecordAction(
     return actionError("Revise los datos ingresados.");
   }
 
-  const payload = parsed.data;
+  const payload = parsed.data.in_repair
+    ? { ...parsed.data, bm_completed: false, body_wash_completed: false }
+    : parsed.data;
   const hasAnyFlag = payload.bm_completed || payload.body_wash_completed || payload.in_repair;
   const supabase = await createClient();
 
