@@ -47,6 +47,12 @@ export const PERMISSIONS = {
     edit: "terminals.edit",
     delete: "terminals.delete",
   },
+  dispensers: {
+    view: "dispensers.view",
+    create: "dispensers.create",
+    edit: "dispensers.edit",
+    delete: "dispensers.delete",
+  },
   users: {
     view: "users.view",
     create: "users.create",
@@ -101,6 +107,9 @@ export const PERMISSION_DEPENDENCIES: Readonly<
   [PERMISSIONS.terminals.create]: [PERMISSIONS.terminals.view],
   [PERMISSIONS.terminals.edit]: [PERMISSIONS.terminals.view],
   [PERMISSIONS.terminals.delete]: [PERMISSIONS.terminals.view],
+  [PERMISSIONS.dispensers.create]: [PERMISSIONS.dispensers.view],
+  [PERMISSIONS.dispensers.edit]: [PERMISSIONS.dispensers.view],
+  [PERMISSIONS.dispensers.delete]: [PERMISSIONS.dispensers.view],
   [PERMISSIONS.users.create]: [PERMISSIONS.users.view, PERMISSIONS.access.manage],
   [PERMISSIONS.users.edit]: [PERMISSIONS.users.view],
   [PERMISSIONS.users.suspend]: [PERMISSIONS.users.view],

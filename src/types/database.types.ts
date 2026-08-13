@@ -144,6 +144,28 @@ export type BusWashRecordRow = {
   updated_at: string;
 }
 
+export type BusWashExportRow = {
+  id: string;
+  record_date: string;
+  zone: string;
+  file_name: string;
+  bus_count: number;
+  generated_by: string | null;
+  generated_at: string;
+}
+
+export type DispenserRow = {
+  id: string;
+  code: string;
+  planner_rut: string;
+  supervisor_rut: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+}
+
 export type TechnicalReviewEventRow = {
   id: string;
   fleet_id: string;
@@ -541,6 +563,29 @@ export type Database = {
           | "updated_at"
         >;
         Update: Partial<BusWashRecordRow>;
+        Relationships: [];
+      };
+      bus_wash_exports: {
+        Row: BusWashExportRow;
+        Insert: WithDefaults<
+          BusWashExportRow,
+          "id" | "generated_by" | "generated_at"
+        >;
+        Update: Partial<BusWashExportRow>;
+        Relationships: [];
+      };
+      dispensers: {
+        Row: DispenserRow;
+        Insert: WithDefaults<
+          DispenserRow,
+          | "id"
+          | "active"
+          | "created_at"
+          | "updated_at"
+          | "created_by"
+          | "updated_by"
+        >;
+        Update: Partial<DispenserRow>;
         Relationships: [];
       };
       technical_review_events: {

@@ -103,6 +103,7 @@ export function landingRouteFor(context: CurrentUserContext): string {
   if (context.permissions.includes(PERMISSIONS.busWash.view)) return "/lavado-buses";
   if (context.permissions.includes(PERMISSIONS.fleet.view)) return "/configuracion/flota";
   if (context.permissions.includes(PERMISSIONS.terminals.view)) return "/configuracion/terminales";
+  if (context.permissions.includes(PERMISSIONS.dispensers.view)) return "/configuracion/surtidores";
   if (context.permissions.includes(PERMISSIONS.users.view)) return "/acceso";
   return "/sin-permisos";
 }

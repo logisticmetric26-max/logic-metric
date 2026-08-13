@@ -30,6 +30,7 @@ const MODULE_LABELS: Record<string, string> = {
   bus_wash: "Lavado buses",
   fleet: "Flota",
   terminals: "Terminales",
+  dispensers: "Surtidores",
   access: "Acceso",
   settings: "Plataforma",
 };

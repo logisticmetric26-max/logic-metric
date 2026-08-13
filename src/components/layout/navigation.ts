@@ -1,31 +1,31 @@
-import { ClipboardCheck, Droplets, Settings, ShieldCheck, Sparkles, type LucideIcon } from "lucide-react";
+import {
+  ClipboardCheck,
+  Droplets,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { PERMISSIONS, type PermissionCode } from "@/lib/auth/permissions";
 
 /**
- * Definición del menú lateral (§6).
+ * Definicion del menu lateral.
  *
- * Declarativa a propósito: agregar un módulo futuro es añadir una entrada aquí
- * y sus permisos en una migración. No hay que tocar el layout, la sesión ni la
- * autenticación.
- *
- * Revisión técnica conserva su navegación secundaria interna. Los módulos
- * operacionales principales viven al primer nivel del sidebar.
+ * Es declarativo a proposito: agregar un modulo futuro es anadir una entrada
+ * aqui y sus permisos en una migracion.
  */
-
 export interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
-  /** Basta con tener uno de estos permisos para ver la entrada. */
   permissions: readonly PermissionCode[];
-  /** `footer` se ancla al final del sidebar. */
   group: "main" | "footer";
   description?: string;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
   {
-    label: "Revisión Técnica",
+    label: "Revision Tecnica",
     href: "/revision-tecnica",
     icon: ClipboardCheck,
     permissions: [PERMISSIONS.technicalReview.view, PERMISSIONS.notSent.view],
@@ -49,12 +49,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
     description: "B&M, carroceria y reparacion diaria",
   },
   {
-    label: "Configuración",
+    label: "Configuracion",
     href: "/configuracion",
     icon: Settings,
-    permissions: [PERMISSIONS.fleet.view, PERMISSIONS.terminals.view],
+    permissions: [
+      PERMISSIONS.fleet.view,
+      PERMISSIONS.terminals.view,
+      PERMISSIONS.dispensers.view,
+    ],
     group: "footer",
-    description: "Flota y terminales",
+    description: "Flota, terminales y surtidores",
   },
   {
     label: "Acceso",
@@ -72,19 +76,20 @@ export function visibleNavItems(permissions: readonly string[]): NavItem[] {
   );
 }
 
-/** Título legible de cada ruta, para migas de pan y encabezados. */
+/** Titulo legible de cada ruta, para migas de pan y encabezados. */
 export const ROUTE_LABELS: Record<string, string> = {
-  "revision-tecnica": "Revisión Técnica",
+  "revision-tecnica": "Revision Tecnica",
   combustible: "Combustible",
   "lavado-buses": "Lavado Buses",
-  "en-revision": "En revisión",
+  "en-revision": "En revision",
   "no-enviados": "No enviados",
   rechazados: "Rechazados",
   vencimientos: "Vencimientos",
   historial: "Historial",
-  configuracion: "Configuración",
+  configuracion: "Configuracion",
   flota: "Flota",
   terminales: "Terminales",
+  surtidores: "Surtidores",
   acceso: "Acceso",
   roles: "Roles",
   detalle: "Detalle",

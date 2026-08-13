@@ -10,7 +10,7 @@ import { Field, Input } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { formatDateOnly, formatDateTime, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { saveBusWashRecordAction } from "@/features/bus-wash/actions";
+import { registerBusWashExportAction, saveBusWashRecordAction } from "@/features/bus-wash/actions";
 
 export interface BusWashListRow {
   id: string;
@@ -134,8 +134,20 @@ export function BusWashBoard({
       return;
     }
 
-    downloadZoneCsv(zoneRows, zone, date);
-    toast.success(`Archivo ${date} ${zone} generado.`);
+    startTransition(async () => {
+      const result = await registerBusWashExportAction({
+        record_date: date,
+        zone,
+      });
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      downloadZoneCsv(zoneRows, zone, result.data.file_name);
+      toast.success(`Archivo ${result.data.file_name} generado.`);
+    });
   }
 
   return (
@@ -510,7 +522,8 @@ function normalizeZoneLabel(zone: string | null | undefined) {
   return zone?.trim() || "Sin zona";
 }
 
-function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, date: string) {
+function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, fileName: string) {
+  const date = fileName.slice(0, 10);
   const lines = [
     "Registro de lavado de buses",
     [
@@ -546,7 +559,7 @@ function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, date: string)
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = `${date}_${toFileSegment(zone)}.csv`;
+  link.download = fileName;
   document.body.append(link);
   link.click();
   link.remove();
@@ -555,14 +568,4 @@ function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, date: string)
 
 function escapeCsv(value: string) {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
-
-function toFileSegment(value: string) {
-  const sanitized = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return sanitized || "SIN_ZONA";
 }

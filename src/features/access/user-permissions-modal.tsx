@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { Alert } from "@/components/ui/feedback";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { setUserPermissionOverridesAction } from "@/features/access/actions";
-import type { PermissionRow, ProfileViewRow, RoleViewRow } from "@/types/database.types";
 import { cn } from "@/lib/utils";
 import {
   grantPermissionWithDependencies,
@@ -15,24 +14,27 @@ import {
   revokePermissionWithDependents,
   type PermissionCode,
 } from "@/lib/auth/permissions";
+import type { PermissionRow, ProfileViewRow, RoleViewRow } from "@/types/database.types";
 
 type OverrideState = "INHERITED" | "GRANTED" | "REVOKED";
 
 const MODULE_LABELS: Record<string, string> = {
-  technical_review: "Revisión técnica",
+  technical_review: "Revision tecnica",
+  fuel_calendar: "Combustible",
+  bus_wash: "Lavado buses",
   fleet: "Flota",
   terminals: "Terminales",
+  dispensers: "Surtidores",
   access: "Acceso",
   settings: "Plataforma",
 };
 
 /**
- * §10 · Permisos efectivos de un usuario.
+ * Permisos efectivos de un usuario.
  *
- * Cada permiso tiene tres estados: heredar del rol, conceder explícitamente o
- * revocar explícitamente. Las excepciones se guardan en
- * `user_permission_overrides` y siempre pesan más que el rol, tal como resuelve
- * `app.has_permission()`.
+ * Cada permiso tiene tres estados: heredar del rol, conceder explicitamente o
+ * revocar explicitamente. Las excepciones se guardan en
+ * `user_permission_overrides` y siempre pesan mas que el rol.
  */
 export function UserPermissionsModal({
   open,
@@ -144,7 +146,7 @@ export function UserPermissionsModal({
       busy={pending}
       size="xl"
       title="Permisos del usuario"
-      description={`${user.full_name} · rol ${user.role_name}`}
+      description={`${user.full_name} - rol ${user.role_name}`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>
@@ -158,14 +160,14 @@ export function UserPermissionsModal({
     >
       <div className="flex flex-col gap-4">
         <Alert tone="info">
-          Por defecto el usuario hereda los permisos de su rol. Las excepciones definidas aquí
-          pesan más que el rol y sólo afectan a este usuario. Los requisitos de cada capacidad se
-          ajustan automáticamente para evitar accesos incompletos.
+          Por defecto el usuario hereda los permisos de su rol. Las excepciones definidas aqui
+          pesan mas que el rol y solo afectan a este usuario. Los requisitos de cada capacidad se
+          ajustan automaticamente para evitar accesos incompletos.
         </Alert>
 
         {overrideCount > 0 && (
           <p className="text-sm text-ink-muted">
-            {overrideCount} excepción{overrideCount === 1 ? "" : "es"} definida
+            {overrideCount} excepcion{overrideCount === 1 ? "" : "es"} definida
             {overrideCount === 1 ? "" : "s"}.
           </p>
         )}
@@ -195,7 +197,7 @@ export function UserPermissionsModal({
                         ) : (
                           <Badge tone="neutral">Sin acceso</Badge>
                         )}
-                        {state !== "INHERITED" && <Badge tone="warning">Excepción</Badge>}
+                        {state !== "INHERITED" && <Badge tone="warning">Excepcion</Badge>}
                       </div>
                       {permission.description && (
                         <p className="mt-0.5 text-xs text-ink-muted">{permission.description}</p>
@@ -205,7 +207,7 @@ export function UserPermissionsModal({
                     <div className="flex shrink-0 rounded-lg border border-border p-0.5">
                       {(
                         [
-                          ["INHERITED", inRole ? "Del rol (sí)" : "Del rol (no)"],
+                          ["INHERITED", inRole ? "Del rol (si)" : "Del rol (no)"],
                           ["GRANTED", "Conceder"],
                           ["REVOKED", "Revocar"],
                         ] as const

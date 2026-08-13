@@ -11,4 +11,10 @@ export const busWashRecordSchema = z.object({
   no_wash: z.boolean(),
 });
 
+export const busWashExportSchema = z.object({
+  record_date: dateSchema,
+  zone: z.string().trim().min(1).max(120),
+});
+
 export type BusWashRecordInput = z.infer<typeof busWashRecordSchema>;
+export type BusWashExportInput = z.infer<typeof busWashExportSchema>;
