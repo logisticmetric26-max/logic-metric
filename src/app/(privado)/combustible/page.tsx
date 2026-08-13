@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requirePermission } from "@/lib/auth/session";
+import { requireAnyPermission } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { ErrorState } from "@/components/ui/feedback";
 import { FuelCalendar } from "@/features/fuel/fuel-calendar";
@@ -27,7 +28,15 @@ export default async function CombustiblePage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const context = await requirePermission(PERMISSIONS.fuelCalendar.view);
+  const context = await requireAnyPermission([
+    PERMISSIONS.fuelCalendar.view,
+    PERMISSIONS.badLoads.view,
+  ]);
+
+  if (!context.permissions.includes(PERMISSIONS.fuelCalendar.view)) {
+    redirect("/combustible/malas-cargas");
+  }
+
   const params = await searchParams;
 
   const today = todayInZone();

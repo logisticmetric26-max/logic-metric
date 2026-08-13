@@ -48,10 +48,13 @@ const MESSAGES: Record<string, string> = {
   FUEL_DELIVERY_EDIT_PERMISSION_REQUIRED: "No tiene permisos para reprogramar esta llegada.",
   FUEL_DELIVERY_CONFIRM_PERMISSION_REQUIRED: "No tiene permisos para confirmar esta llegada.",
   FUEL_DELIVERY_IMMUTABLE_FIELDS: "No es posible alterar los datos base del registro.",
+  BAD_LOAD_IMMUTABLE_FIELDS: "No es posible alterar los datos base de la mala carga.",
+  BAD_LOAD_BUS_NOT_FOUND: "No se encontro un bus accesible con esa PPU o numero interno.",
   BUS_WASH_IMMUTABLE_FIELDS: "No es posible alterar los datos base del registro diario.",
   BUS_WASH_REDVAN_NOT_ALLOWED: "Los buses Redvan no se contemplan en el registro de lavado.",
   BUS_WASH_EMPTY_RECORD: "Debe indicar al menos un estado para el bus.",
   DISPENSER_CODE_REQUIRED: "Debe ingresar el codigo del surtidor.",
+  READER_CODE_REQUIRED: "Debe ingresar el codigo lector.",
 
   // Documentos / almacenamiento
   INVALID_STORAGE_PATH: "El documento no pudo ser almacenado correctamente.",
@@ -71,7 +74,19 @@ const CONSTRAINT_MESSAGES: Array<[RegExp, string]> = [
   [/fuel_delivery_unique_slot_idx/, "Ya existe una llegada programada para ese terminal, producto y ventana."],
   [/bus_wash_records_fleet_date_idx/, "Ya existe un registro diario para este bus."],
   [/bus_wash_records_meaningful_check/, "Debe indicar al menos un estado para el bus."],
+  [/bad_fuel_loads_liters_check/, "Los litros deben ser mayores que cero y mantenerse dentro del rango permitido."],
   [/dispensers_code_unique_idx/, "Ya existe un surtidor registrado con ese codigo."],
+  [/reader_codes_code_unique_idx/, "Ya existe un codigo lector registrado con ese valor."],
+  [/reader_codes_ppu_format/, "La PPU ingresada no tiene un formato valido."],
+  [/reader_codes_internal_number_format/, "El numero interno ingresado no tiene un formato valido."],
+  [
+    /reader_codes_reader_code_format/,
+    "El codigo lector solo admite letras, numeros, espacios, guion y guion bajo.",
+  ],
+  [
+    /reader_codes_reader_type_format/,
+    "El tipo solo admite letras, numeros, espacios, guion y guion bajo.",
+  ],
   [/trd_event_type_unique_idx/, "Ya existe un documento de ese tipo en esta revisión."],
   [/tre_approved_requires_expiration/, "Debe ingresar una fecha de vencimiento."],
   [/tre_rejected_has_no_expiration/, "Una revisión rechazada no fija una nueva fecha de vencimiento."],

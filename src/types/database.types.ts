@@ -166,6 +166,33 @@ export type DispenserRow = {
   updated_by: string | null;
 }
 
+export type BadFuelLoadRow = {
+  id: string;
+  fleet_id: string;
+  terminal_id: string;
+  dispenser_id: string;
+  load_date: string;
+  load_time: string;
+  liters: number;
+  created_by: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ReaderCodeRow = {
+  id: string;
+  ppu: string;
+  internal_number: string;
+  reader_code: string;
+  reader_type: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+}
+
 export type TechnicalReviewEventRow = {
   id: string;
   fleet_id: string;
@@ -389,6 +416,26 @@ export type FuelDeliveryScheduleViewRow = {
   updated_at: string;
 }
 
+export type BadFuelLoadViewRow = {
+  id: string;
+  fleet_id: string;
+  internal_number: string;
+  ppu: string;
+  terminal_id: string;
+  terminal_name: string;
+  dispenser_id: string;
+  dispenser_code: string;
+  load_date: string;
+  load_time: string;
+  liters: number;
+  created_by: string;
+  created_by_name: string | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type TerminalSummary = {
   id: string;
   name: string;
@@ -565,6 +612,15 @@ export type Database = {
         Update: Partial<BusWashRecordRow>;
         Relationships: [];
       };
+      bad_fuel_loads: {
+        Row: BadFuelLoadRow;
+        Insert: WithDefaults<
+          BadFuelLoadRow,
+          "id" | "updated_by" | "created_at" | "updated_at"
+        >;
+        Update: Partial<BadFuelLoadRow>;
+        Relationships: [];
+      };
       bus_wash_exports: {
         Row: BusWashExportRow;
         Insert: WithDefaults<
@@ -586,6 +642,21 @@ export type Database = {
           | "updated_by"
         >;
         Update: Partial<DispenserRow>;
+        Relationships: [];
+      };
+      reader_codes: {
+        Row: ReaderCodeRow;
+        Insert: WithDefaults<
+          ReaderCodeRow,
+          | "id"
+          | "reader_type"
+          | "active"
+          | "created_at"
+          | "updated_at"
+          | "created_by"
+          | "updated_by"
+        >;
+        Update: Partial<ReaderCodeRow>;
         Relationships: [];
       };
       technical_review_events: {
@@ -693,6 +764,7 @@ export type Database = {
       technical_review_events_view: ReadOnlyView<TechnicalReviewEventViewRow>;
       technical_review_not_sent_view: ReadOnlyView<TechnicalReviewNotSentViewRow>;
       fuel_delivery_schedule_view: ReadOnlyView<FuelDeliveryScheduleViewRow>;
+      bad_fuel_loads_view: ReadOnlyView<BadFuelLoadViewRow>;
       profiles_view: ReadOnlyView<ProfileViewRow>;
       roles_view: ReadOnlyView<RoleViewRow>;
     };

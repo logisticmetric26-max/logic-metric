@@ -21,10 +21,12 @@ type OverrideState = "INHERITED" | "GRANTED" | "REVOKED";
 const MODULE_LABELS: Record<string, string> = {
   technical_review: "Revision tecnica",
   fuel_calendar: "Combustible",
+  bad_loads: "Malas cargas",
   bus_wash: "Lavado buses",
   fleet: "Flota",
   terminals: "Terminales",
   dispensers: "Surtidores",
+  reader_codes: "Codigos lectores",
   access: "Acceso",
   settings: "Plataforma",
 };

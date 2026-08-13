@@ -8,6 +8,7 @@ export default async function ConfiguracionPage() {
     PERMISSIONS.fleet.view,
     PERMISSIONS.terminals.view,
     PERMISSIONS.dispensers.view,
+    PERMISSIONS.readerCodes.view,
   ]);
 
   if (context.permissions.includes(PERMISSIONS.fleet.view)) {
@@ -20,6 +21,10 @@ export default async function ConfiguracionPage() {
 
   if (context.permissions.includes(PERMISSIONS.dispensers.view)) {
     redirect("/configuracion/surtidores");
+  }
+
+  if (context.permissions.includes(PERMISSIONS.readerCodes.view)) {
+    redirect("/configuracion/codigos-lectores");
   }
 
   redirect("/configuracion/flota");

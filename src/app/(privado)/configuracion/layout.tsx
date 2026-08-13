@@ -1,4 +1,4 @@
-import { Bus, Building2, Droplets } from "lucide-react";
+import { Bus, Building2, Droplets, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -19,6 +19,7 @@ export default async function ConfiguracionLayout({
     PERMISSIONS.fleet.view,
     PERMISSIONS.terminals.view,
     PERMISSIONS.dispensers.view,
+    PERMISSIONS.readerCodes.view,
   ]);
 
   const tabs: TabItem[] = [];
@@ -47,11 +48,19 @@ export default async function ConfiguracionLayout({
     });
   }
 
+  if (context.permissions.includes(PERMISSIONS.readerCodes.view)) {
+    tabs.push({
+      href: "/configuracion/codigos-lectores",
+      label: "Codigos lectores",
+      icon: <ScanLine className="size-4" aria-hidden />,
+    });
+  }
+
   return (
     <>
       <PageHeader
         title="Configuracion"
-        description="Administracion de la flota, terminales y surtidores operacionales."
+        description="Administracion de la flota, terminales, surtidores y codigos lectores."
       />
       <Tabs items={tabs} className="mb-5" />
       {children}
