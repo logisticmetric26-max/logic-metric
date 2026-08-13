@@ -155,16 +155,12 @@ export function BusWashBoard({
               reparacion y buses sin lavado, ordenado por zona operacional.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <MetricPill label="Fecha" value={formatDateOnly(date)} hint="Dia operativo" tone="neutral" />
               <MetricPill label="Flota visible" value={formatNumber(summary.total)} hint="Buses en pantalla" tone="brand" />
               <MetricPill label="B&M" value={formatNumber(summary.bm)} hint="Marcados como realizados" tone="success" />
-              <MetricPill
-                label="Lavado / rep. / sin"
-                value={`${formatNumber(summary.bodyWash)} / ${formatNumber(summary.inRepair)} / ${formatNumber(summary.noWash)}`}
-                hint="Carroceria / reparacion / sin lavado"
-                tone="warning"
-              />
+              <MetricPill label="Lavado" value={formatNumber(summary.bodyWash)} hint="Carroceria realizada" tone="info" />
+              <MetricPill label="Rep. / sin" value={`${formatNumber(summary.inRepair)} / ${formatNumber(summary.noWash)}`} hint="Reparacion / sin lavado" tone="warning" />
             </div>
           </div>
 
@@ -224,6 +220,8 @@ export function BusWashBoard({
         groupedRows.map(([zone, zoneRows]) => {
           const allZoneRows = allRowsByZone.get(zone) ?? zoneRows;
           const incompleteCount = allZoneRows.filter((row) => !hasAnyStatus(row)).length;
+          const bmCount = allZoneRows.filter((row) => row.bm_completed).length;
+          const bodyWashCount = allZoneRows.filter((row) => row.body_wash_completed).length;
           const repairCount = allZoneRows.filter((row) => row.in_repair).length;
           const noWashCount = allZoneRows.filter((row) => row.no_wash).length;
 
@@ -243,6 +241,8 @@ export function BusWashBoard({
                       ? "Registro completo"
                       : `${formatNumber(incompleteCount)} pendientes`}
                   </Badge>
+                  <Badge tone="success">{formatNumber(bmCount)} B&M</Badge>
+                  <Badge tone="info">{formatNumber(bodyWashCount)} lavado</Badge>
                   <Badge tone="neutral">{formatNumber(repairCount)} en reparacion</Badge>
                   <Badge tone="danger">{formatNumber(noWashCount)} sin lavado</Badge>
                   <Button
@@ -294,9 +294,15 @@ export function BusWashBoard({
                       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                         <CheckItem
                           label="B&M"
-                          description={row.in_repair ? "Sin registrar por reparacion" : "Barrido y mopeado"}
+                          description={
+                            row.in_repair
+                              ? "Sin registrar por reparacion"
+                              : row.no_wash
+                                ? "Sin registrar por sin lavado"
+                                : "Barrido y mopeado"
+                          }
                           checked={row.bm_completed}
-                          disabled={!canEdit || isSaving || row.in_repair}
+                          disabled={!canEdit || isSaving || row.in_repair || row.no_wash}
                           onChange={(checked) =>
                             updateRow(row, {
                               bm_completed: checked,
@@ -308,9 +314,15 @@ export function BusWashBoard({
                         />
                         <CheckItem
                           label={row.had_body_wash_yesterday ? "Lavado - lavado ayer" : "Lavado"}
-                          description={row.in_repair ? "Sin registrar por reparacion" : "Carroceria"}
+                          description={
+                            row.in_repair
+                              ? "Sin registrar por reparacion"
+                              : row.no_wash
+                                ? "Sin registrar por sin lavado"
+                                : "Carroceria"
+                          }
                           checked={row.body_wash_completed}
-                          disabled={!canEdit || isSaving || row.in_repair}
+                          disabled={!canEdit || isSaving || row.in_repair || row.no_wash}
                           emphasizeYesterday={row.had_body_wash_yesterday}
                           onChange={(checked) =>
                             updateRow(row, {
@@ -323,9 +335,9 @@ export function BusWashBoard({
                         />
                         <CheckItem
                           label="Reparacion"
-                          description="Bus detenido"
+                          description={row.no_wash ? "No disponible por sin lavado" : "Bus detenido"}
                           checked={row.in_repair}
-                          disabled={!canEdit || isSaving}
+                          disabled={!canEdit || isSaving || row.no_wash}
                           tone="warning"
                           onChange={(checked) =>
                             updateRow(row, {
@@ -434,13 +446,14 @@ function MetricPill({
   label: string;
   value: string;
   hint: string;
-  tone: "neutral" | "brand" | "success" | "warning";
+  tone: "neutral" | "brand" | "success" | "warning" | "info";
 }) {
   const toneClass = {
     neutral: "border-slate-200 bg-white/85 text-slate-700",
     brand: "border-brand-200 bg-brand-50/85 text-brand-700",
     success: "border-success-200 bg-success-50/85 text-success-700",
     warning: "border-warning-200 bg-warning-50/85 text-warning-700",
+    info: "border-info-200 bg-info-50/85 text-info-700",
   } as const;
 
   return (
