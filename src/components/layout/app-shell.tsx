@@ -3,29 +3,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, PanelLeftClose, Settings2, X } from "lucide-react";
+import { ChevronRight, LayoutGrid, PanelLeftClose, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { visibleNavItems, ROUTE_LABELS } from "@/components/layout/navigation";
+import { visibleNavItems, ROUTE_LABELS, type NavItem } from "@/components/layout/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { ProfileModal } from "@/features/profile/profile-modal";
 import { PresenceHeartbeat } from "@/features/profile/presence-heartbeat";
+import { NotificationsProvider } from "@/features/notifications/notifications-provider";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { avatarUrl } from "@/lib/avatar";
 import type { CurrentUserContext } from "@/types/database.types";
 
 /**
  * Estructura de la aplicación (§5).
  *
- *   Escritorio → barra lateral permanente y colapsable
- *   Móvil      → barra lateral en drawer, invocada desde la cabecera
+ *   Escritorio → barra lateral de cristal flotante, permanente y colapsable.
+ *   Móvil      → cabecera compacta + BARRA INFERIOR tipo app, con las secciones
+ *                al alcance del pulgar; lo secundario vive tras «Más».
  *
  * El cromo FLOTA: en escritorio la barra lateral y la cabecera son paneles de
- * cristal separados del borde de la ventana, con el ambiente visible alrededor.
- * Un panel pegado a los bordes se lee como una franja pintada; uno separado se
- * lee como una pieza por encima del contenido, que es exactamente lo que hace:
- * el contenido se desplaza por debajo.
+ * cristal separados del borde, con el ambiente visible alrededor. En móvil van
+ * a sangre, donde cada píxel de margen es espacio que le falta a los datos.
  *
- * En móvil el cromo va a sangre a propósito: con 390 px de ancho, el margen
- * alrededor es espacio que le falta a los datos.
+ * Todo el árbol queda envuelto en el proveedor de notificaciones: un único
+ * canal de tiempo real compartido por toda la sesión.
  */
 export function AppShell({
   context,
@@ -34,13 +35,7 @@ export function AppShell({
   children,
 }: {
   context: CurrentUserContext;
-  /** Base pública de Supabase, para componer la URL de la foto de perfil. */
   supabaseUrl: string;
-  /**
-   * Preferencia de barra lateral colapsada, leída de una cookie en el servidor.
-   * Viene como prop —y no de `localStorage`— para que el primer render ya sea
-   * el correcto: sin parpadeo de la barra ni desajuste de hidratación.
-   */
   defaultCollapsed: boolean;
   children: React.ReactNode;
 }) {
@@ -63,121 +58,126 @@ export function AppShell({
   function toggleCollapsed() {
     const next = !collapsed;
     setCollapsed(next);
-    // Cookie en lugar de localStorage: el servidor puede leerla en el siguiente
-    // render. `SameSite=Lax` basta para una preferencia de interfaz.
     document.cookie = `sidebar-collapsed=${next ? "1" : "0"}; path=/; max-age=31536000; SameSite=Lax`;
   }
 
   return (
-    // Sin fondo propio: el ambiente del `body` debe verse a través del cristal
-    <div className="flex min-h-dvh lg:gap-3 lg:p-3">
-      {/* ── Barra lateral de escritorio · panel de cristal flotante ────────── */}
-      <aside
-        className={cn(
-          "liquid edge sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col",
-          "rounded-2xl shadow-[var(--shadow-floating)] lg:flex",
-          "transition-[width] duration-300 ease-[var(--ease-emphasis)]",
-          collapsed ? "w-[4.75rem]" : "w-[15.5rem]",
-        )}
-      >
-        <SidebarContent
-          collapsed={collapsed}
-          mainItems={mainItems}
-          footerItems={footerItems}
-          pathname={pathname}
-          context={context}
-          photo={photo}
-          onOpenProfile={openProfile}
-        />
-
-        <button
-          type="button"
-          onClick={toggleCollapsed}
+    <NotificationsProvider>
+      <div className="flex min-h-dvh lg:gap-3 lg:p-3">
+        {/* ── Barra lateral de escritorio ─────────────────────────────────── */}
+        <aside
           className={cn(
-            "m-2 mt-0 flex items-center justify-center gap-2 rounded-xl py-2.5",
-            "text-[12px] font-medium text-ink-muted",
-            "transition-colors duration-200 hover:bg-fill-subtle hover:text-ink",
+            "liquid edge sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col",
+            "rounded-2xl shadow-[var(--shadow-floating)] lg:flex",
+            "transition-[width] duration-300 ease-[var(--ease-emphasis)]",
+            collapsed ? "w-[4.75rem]" : "w-[15.5rem]",
           )}
-          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
         >
-          {collapsed ? (
-            <ChevronRight className="size-4" aria-hidden />
-          ) : (
-            <>
-              <PanelLeftClose className="size-4" aria-hidden />
-              Colapsar
-            </>
-          )}
-        </button>
-      </aside>
-
-      {/* ── Barra lateral móvil ────────────────────────────────────────────── */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="animate-fade-in absolute inset-0 bg-scrim backdrop-blur-[3px]"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden
+          <SidebarContent
+            collapsed={collapsed}
+            mainItems={mainItems}
+            footerItems={footerItems}
+            pathname={pathname}
+            context={context}
+            photo={photo}
+            onOpenProfile={openProfile}
           />
-          <div className="liquid-thick edge animate-slide-in-right absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col shadow-[var(--shadow-overlay)]">
-            <div className="flex items-center justify-between px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3">
-              <Brand />
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Cerrar menú"
-                className="-m-1 rounded-xl p-2 text-ink-muted transition-colors hover:bg-fill hover:text-ink"
-              >
-                <X className="size-5" aria-hidden />
-              </button>
-            </div>
-            <SidebarContent
-              collapsed={false}
-              mainItems={mainItems}
-              footerItems={footerItems}
-              pathname={pathname}
-              context={context}
-              photo={photo}
-              onOpenProfile={openProfile}
-              hideBrand
-              // Navegar cierra el menú: nadie quiere cerrarlo a mano cada vez
-              onNavigate={() => setMobileOpen(false)}
+
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className={cn(
+              "m-2 mt-0 flex items-center justify-center gap-2 rounded-xl py-2.5",
+              "text-[12px] font-medium text-ink-muted",
+              "transition-colors duration-200 hover:bg-fill-subtle hover:text-ink",
+            )}
+            aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+          >
+            {collapsed ? (
+              <ChevronRight className="size-4" aria-hidden />
+            ) : (
+              <>
+                <PanelLeftClose className="size-4" aria-hidden />
+                Colapsar
+              </>
+            )}
+          </button>
+        </aside>
+
+        {/* ── Cajón «Más» de móvil (secciones de administración + perfil) ──── */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="animate-fade-in absolute inset-0 bg-scrim backdrop-blur-[3px]"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden
             />
+            <div className="liquid-thick edge animate-slide-up absolute inset-x-0 bottom-0 flex max-h-[80vh] flex-col rounded-t-2xl pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-overlay)]">
+              <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                <Brand />
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Cerrar"
+                  className="-m-1 rounded-xl p-2 text-ink-muted transition-colors hover:bg-fill hover:text-ink"
+                >
+                  <X className="size-5" aria-hidden />
+                </button>
+              </div>
+              <div className="scroll-area min-h-0 overflow-y-auto px-2 pb-3">
+                <SidebarContent
+                  collapsed={false}
+                  mainItems={mainItems}
+                  footerItems={footerItems}
+                  pathname={pathname}
+                  context={context}
+                  photo={photo}
+                  onOpenProfile={openProfile}
+                  hideBrand
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* ── Área principal ─────────────────────────────────────────────── */}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Header
+            context={context}
+            photo={photo}
+            onOpenProfile={openProfile}
+          />
+          <main className="min-w-0 flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-0 lg:pb-6">
+            <div className="mx-auto w-full max-w-[1560px]">{children}</div>
+          </main>
         </div>
-      )}
 
-      {/* ── Área principal ─────────────────────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <Header
-          context={context}
-          photo={photo}
-          onOpenMenu={() => setMobileOpen(true)}
-          onOpenProfile={openProfile}
+        {/* ── Barra inferior de móvil ────────────────────────────────────── */}
+        <BottomNav
+          mainItems={mainItems}
+          hasMore={footerItems.length > 0}
+          pathname={pathname}
+          onOpenMore={() => setMobileOpen(true)}
+          moreActive={mobileOpen}
         />
-        <main className="min-w-0 flex-1 px-4 pb-6 sm:px-6 lg:px-0">
-          <div className="mx-auto w-full max-w-[1560px]">{children}</div>
-        </main>
+
+        <ProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          context={context}
+          supabaseUrl={supabaseUrl}
+        />
+
+        <PresenceHeartbeat />
       </div>
-
-      <ProfileModal
-        open={profileOpen}
-        onClose={() => setProfileOpen(false)}
-        context={context}
-        supabaseUrl={supabaseUrl}
-      />
-
-      {/* Marca presencia mientras la pestaña esté visible */}
-      <PresenceHeartbeat />
-    </div>
+    </NotificationsProvider>
   );
 }
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <Link href="/" className="group flex items-center gap-2.5 overflow-hidden">
-      {/* Degradado, reflejo interior y halo del propio color: el logotipo se lee
-          como una pieza física iluminada, no como un cuadrado azul. */}
       <span
         className={cn(
           "flex size-9 shrink-0 items-center justify-center rounded-md",
@@ -209,8 +209,8 @@ function SidebarContent({
   onNavigate,
 }: {
   collapsed: boolean;
-  mainItems: ReturnType<typeof visibleNavItems>;
-  footerItems: ReturnType<typeof visibleNavItems>;
+  mainItems: NavItem[];
+  footerItems: NavItem[];
   pathname: string;
   context: CurrentUserContext;
   photo: string | null;
@@ -264,9 +264,6 @@ function SidebarContent({
         )}
       </nav>
 
-      {/* Bloque de usuario · abre el perfil.
-          Antes era texto muerto: mostraba quién eras y no llevaba a ninguna
-          parte, con lo que la foto y la contraseña no tenían dónde vivir. */}
       <button
         type="button"
         onClick={onOpenProfile}
@@ -277,7 +274,7 @@ function SidebarContent({
           collapsed ? "justify-center p-2" : "px-2.5 py-2",
         )}
       >
-        <Avatar name={context.profile.full_name} src={photo} size={collapsed ? "md" : "md"} />
+        <Avatar name={context.profile.full_name} src={photo} size="md" />
 
         {!collapsed && (
           <>
@@ -300,7 +297,6 @@ function SidebarContent({
   );
 }
 
-/** Encabezado de grupo: aporta jerarquía sin ocupar sitio. */
 function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <p
@@ -320,12 +316,12 @@ function NavLink({
   collapsed,
   onNavigate,
 }: {
-  item: ReturnType<typeof visibleNavItems>[number];
+  item: NavItem;
   pathname: string;
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
-  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const active = isActive(pathname, item.href);
   const Icon = item.icon;
 
   return (
@@ -340,9 +336,7 @@ function NavLink({
           "transition-all duration-200 ease-[var(--ease-standard)]",
           collapsed && "justify-center px-0",
           active
-            ? // Pastilla con el tinte de marca y su propio canto: el elemento
-              // seleccionado es la única pieza encendida de la barra.
-              "bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.5)] ring-1 ring-brand-200"
+            ? "bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.5)] ring-1 ring-brand-200"
             : "text-ink-secondary hover:bg-fill-subtle hover:text-ink",
         )}
       >
@@ -362,12 +356,10 @@ function NavLink({
 function Header({
   context,
   photo,
-  onOpenMenu,
   onOpenProfile,
 }: {
   context: CurrentUserContext;
   photo: string | null;
-  onOpenMenu: () => void;
   onOpenProfile: () => void;
 }) {
   const pathname = usePathname();
@@ -376,22 +368,17 @@ function Header({
   return (
     <header
       className={cn(
-        "liquid-thin edge sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3",
+        "liquid-thin edge sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2",
         "px-4 shadow-[var(--shadow-card)] sm:px-5",
-        // Flotante en escritorio, a sangre en móvil
         "lg:top-3 lg:rounded-2xl",
       )}
     >
-      <button
-        type="button"
-        onClick={onOpenMenu}
-        aria-label="Abrir menú"
-        className="-ml-1 rounded-xl p-2 text-ink-secondary transition-colors hover:bg-fill hover:text-ink lg:hidden"
-      >
-        <Menu className="size-5" aria-hidden />
-      </button>
+      {/* Marca compacta en móvil: sin barra lateral, es el ancla de identidad */}
+      <div className="lg:hidden">
+        <Brand collapsed />
+      </div>
 
-      {/* Migas de pan: sólo desde tablet, en móvil el espacio es escaso */}
+      {/* Migas de pan desde tablet */}
       <nav aria-label="Ruta" className="hidden min-w-0 flex-1 sm:block">
         <ol className="flex items-center gap-1 text-[13px]">
           {crumbs.map((crumb, index) => (
@@ -416,17 +403,15 @@ function Header({
         </ol>
       </nav>
 
-      {/* Identidad · abre el perfil.
-          Un solo destino desde los dos sitios donde aparece el usuario: antes
-          este botón desplegaba un menú con la ficha en modo lectura y nada que
-          hacer con ella. */}
-      <div className="flex flex-1 justify-end sm:flex-none">
+      <div className="flex flex-1 items-center justify-end gap-1 sm:flex-none">
+        <NotificationBell />
+
         <button
           type="button"
           onClick={onOpenProfile}
           aria-label="Abrir mi perfil"
           className={cn(
-            "group flex items-center gap-2.5 rounded-full py-1 pr-1 pl-1 sm:pr-3",
+            "group flex items-center gap-2.5 rounded-full p-1 sm:pr-3",
             "transition-colors duration-200 hover:bg-fill",
           )}
         >
@@ -443,12 +428,126 @@ function Header({
   );
 }
 
+/**
+ * §5 · Barra inferior de móvil, tipo aplicación.
+ *
+ * Las secciones principales al alcance del pulgar; lo administrativo, tras
+ * «Más». Sólo aparece en móvil —en escritorio manda la barra lateral—, flota
+ * sobre el contenido como cristal y respeta el área segura del iPhone.
+ */
+function BottomNav({
+  mainItems,
+  hasMore,
+  pathname,
+  onOpenMore,
+  moreActive,
+}: {
+  mainItems: NavItem[];
+  hasMore: boolean;
+  pathname: string;
+  onOpenMore: () => void;
+  moreActive: boolean;
+}) {
+  return (
+    <nav
+      aria-label="Navegación principal"
+      className={cn(
+        "liquid-thick edge fixed inset-x-0 bottom-0 z-40 lg:hidden",
+        "flex items-stretch justify-around gap-1 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
+        "shadow-[0_-4px_20px_-6px_rgb(16_20_38/0.14)]",
+      )}
+    >
+      {mainItems.map((item) => (
+        <BottomTab
+          key={item.href}
+          href={item.href}
+          icon={item.icon}
+          label={shortLabel(item.label)}
+          active={isActive(pathname, item.href)}
+        />
+      ))}
+
+      {hasMore && (
+        <BottomTab
+          icon={LayoutGrid}
+          label="Más"
+          active={moreActive}
+          onClick={onOpenMore}
+        />
+      )}
+    </nav>
+  );
+}
+
+function BottomTab({
+  href,
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  href?: string;
+  icon: NavItem["icon"];
+  label: string;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <span
+        className={cn(
+          "flex h-8 w-full max-w-[64px] items-center justify-center rounded-full transition-colors",
+          active ? "bg-brand-50 text-brand-600" : "text-ink-muted",
+        )}
+      >
+        <Icon className="size-[20px]" aria-hidden />
+      </span>
+      <span
+        className={cn(
+          "text-[10.5px] leading-none font-medium",
+          active ? "text-brand-700" : "text-ink-muted",
+        )}
+      >
+        {label}
+      </span>
+    </>
+  );
+
+  const className = "flex min-w-0 flex-1 flex-col items-center gap-1 pt-1";
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={href ?? "#"} aria-current={active ? "page" : undefined} className={className}>
+      {content}
+    </Link>
+  );
+}
+
+/** Etiqueta corta para la barra inferior: una palabra entra, dos no. */
+function shortLabel(label: string): string {
+  const map: Record<string, string> = {
+    "Revision Tecnica": "Revisión",
+    "Lavado Buses": "Lavado",
+  };
+  return map[label] ?? label.split(" ")[0];
+}
+
+function isActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function buildBreadcrumbs(pathname: string): { href: string; label: string }[] {
   const segments = pathname.split("/").filter(Boolean);
 
   return segments.map((segment, index) => {
     const href = `/${segments.slice(0, index + 1).join("/")}`;
-    // Los UUID en la ruta se muestran como «Detalle», no como un identificador
     const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(segment);
     const label = isId ? "Detalle" : (ROUTE_LABELS[segment] ?? segment);
     return { href, label };

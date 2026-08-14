@@ -471,6 +471,19 @@ export type PermissionOverrideSummary = {
   granted: boolean;
 }
 
+/** Aviso operativo en tiempo real. Se genera por disparadores y se entrega por Realtime. */
+export type NotificationRow = {
+  id: string;
+  terminal_id: string | null;
+  kind: string;
+  title: string;
+  body: string | null;
+  href: string | null;
+  actor_name: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 /** §Lavado · justificación de que un terminal no lavó carrocería por lluvia. */
 export type BusWashRainDayRow = {
   terminal_id: string;
@@ -633,6 +646,12 @@ export type Database = {
         Row: BusWashRainDayRow;
         Insert: WithDefaults<BusWashRainDayRow, "created_by" | "created_at">;
         Update: Partial<BusWashRainDayRow>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: NotificationRow;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [];
       };
       bus_wash_records: {
