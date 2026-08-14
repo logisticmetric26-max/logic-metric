@@ -58,10 +58,16 @@ export default async function PendientesPage({
       .eq("active", true)
       .order("internal_number");
 
+    // Carrocería se mira sobre una VENTANA de días, no sobre uno solo: la regla
+    // es que ningún bus pase más de dos días sin lavado exterior, así que un bus
+    // lavado anteayer no está pendiente hoy. B&M sí es diario.
+    const windowStart = kind === "bm" ? date : shiftDays(date, -(CYCLE_DAYS - 1));
+
     let recordsQuery = supabase
       .from("bus_wash_records")
-      .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash")
-      .eq("record_date", date);
+      .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash, record_date")
+      .gte("record_date", windowStart)
+      .lte("record_date", date);
 
     let rainQuery = supabase
       .from("bus_wash_rain_days")
@@ -83,7 +89,20 @@ export default async function PendientesPage({
 
     rainReason = rain?.[0]?.reason ?? null;
 
-    const byFleet = new Map((records ?? []).map((record) => [record.fleet_id, record]));
+    // Se consolida la ventana: basta con que la faena se haya hecho UNA vez
+    // dentro del ciclo para que el bus no esté pendiente.
+    const byFleet = new Map<string, { bm: boolean; body: boolean; blocked: boolean }>();
+    for (const record of records ?? []) {
+      const previo = byFleet.get(record.fleet_id) ?? { bm: false, body: false, blocked: false };
+      byFleet.set(record.fleet_id, {
+        bm: previo.bm || (record.record_date === date && record.bm_completed),
+        body: previo.body || record.body_wash_completed,
+        // Reparación y «no se lava» sólo cuentan si son del día de referencia
+        blocked:
+          previo.blocked ||
+          (record.record_date === date && (record.in_repair || record.no_wash)),
+      });
+    }
 
     pending = (fleet ?? [])
       // REDVAN no entra en el aseo de flota
@@ -93,9 +112,9 @@ export default async function PendientesPage({
         // Un bus en reparación o marcado «no se lava» no está pendiente: no
         // estaba disponible, y meterlo en la lista mandaría a alguien a
         // buscar un bus que no está.
-        if (record?.in_repair || record?.no_wash) return false;
+        if (record?.blocked) return false;
 
-        return kind === "bm" ? !record?.bm_completed : !record?.body_wash_completed;
+        return kind === "bm" ? !record?.bm : !record?.body;
       })
       .map((bus) => ({
         internal_number: bus.internal_number,
@@ -106,6 +125,12 @@ export default async function PendientesPage({
   } catch (error) {
     reportError("busWashPendingPage", error);
     return <ErrorState description="No fue posible generar la hoja de pendientes." />;
+  }
+
+  // Día de lluvia: la carrocería no se exige, así que no hay pendientes que
+  // reclamar. La hoja lo dice en cabecera y sirve de respaldo del incumplimiento.
+  if (kind === "carroceria" && rainReason) {
+    pending = [];
   }
 
   return (
@@ -124,6 +149,22 @@ function previousDay(value: string): string {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, (month ?? 1) - 1, day ?? 1, 12);
   date.setDate(date.getDate() - 1);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+/** Días de ciclo de carrocería. Coincide con `bus_wash.body_wash_cycle_days`. */
+const CYCLE_DAYS = 2;
+
+/** Desplaza una fecha `yyyy-MM-dd` sin pasar por UTC. */
+function shiftDays(value: string, days: number): string {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1, 12);
+  date.setDate(date.getDate() + days);
 
   return [
     date.getFullYear(),

@@ -169,16 +169,12 @@ export async function exportBusWashDayCsvAction(
   if (recordsError) return actionError(reportError("readBusWashExportRecords", recordsError));
 
   const recordMap = new Map((records ?? []).map((record) => [record.fleet_id, record]));
-  const incompleteCount = visibleFleet.filter((item) => {
-    const record = recordMap.get(item.id);
-    return !hasAnyBusWashStatus(record);
-  }).length;
-
-  if (incompleteCount > 0) {
-    return actionError(
-      `El registro del dia no esta completo. Faltan ${incompleteCount} buses por registrar.`,
-    );
-  }
+  // El archivo NO exige que el día esté completo.
+  //
+  // El histórico tiene que recibir la flota entera cada día, incluidos los
+  // buses que nadie registró: «sin registro» es información —dice que ese bus
+  // no se aseó— y bloquear la carga por eso dejaba el día sin respaldo alguno,
+  // que es peor. Los pendientes salen marcados como tales en el archivo.
 
   const fileName = `LAVADO_BUSES_${parsed.data.record_date}_TODAS_LAS_ZONAS.csv`;
   const lines = [
@@ -192,11 +188,15 @@ export async function exportBusWashDayCsvAction(
       "L. Carroceria",
       "En Reparacion",
       "Sin lavado",
+      "Estado del registro",
     ]
       .map(escapeCsv)
       .join(","),
     ...visibleFleet.map((item) => {
-      const record = recordMap.get(item.id)!;
+      // Sin `!`: ahora el día puede exportarse incompleto, así que un bus sin
+      // registro es un caso normal y no una imposibilidad. Sale con todo en
+      // cero y marcado «SIN REGISTRO», que es justo el dato que interesa.
+      const record = recordMap.get(item.id);
 
       return [
         item.internal_number,
@@ -204,10 +204,11 @@ export async function exportBusWashDayCsvAction(
         parsed.data.record_date,
         normalizeZoneLabel(item.zone),
         item.terminal_name,
-        record.bm_completed ? "1" : "0",
-        record.body_wash_completed ? "1" : "0",
-        record.in_repair ? "1" : "0",
-        record.no_wash ? "1" : "0",
+        record?.bm_completed ? "1" : "0",
+        record?.body_wash_completed ? "1" : "0",
+        record?.in_repair ? "1" : "0",
+        record?.no_wash ? "1" : "0",
+        record ? "REGISTRADO" : "SIN REGISTRO",
       ]
         .map(escapeCsv)
         .join(",");
@@ -268,21 +269,6 @@ function normalizeZoneLabel(value: string | null | undefined) {
   return value?.trim() || "Sin zona";
 }
 
-function hasAnyBusWashStatus(
-  record:
-    | {
-        bm_completed: boolean;
-        body_wash_completed: boolean;
-        in_repair: boolean;
-        no_wash: boolean;
-      }
-    | null
-    | undefined,
-) {
-  return Boolean(
-    record?.bm_completed || record?.body_wash_completed || record?.in_repair || record?.no_wash,
-  );
-}
 
 function escapeCsv(value: string) {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;

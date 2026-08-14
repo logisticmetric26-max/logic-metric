@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/field";
-import { FilterSelect } from "@/components/ui/filters";
+import { FilterSelect, SearchField } from "@/components/ui/filters";
 import { Alert } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast";
 import { formatNumber } from "@/lib/format";
@@ -37,6 +37,7 @@ export function BusWashDailyActions({
   rainReason,
   progress,
   terminals,
+  search,
 }: {
   date: string;
   terminalId: string | null;
@@ -44,6 +45,8 @@ export function BusWashDailyActions({
   canEdit: boolean;
   /** Terminales autorizados del usuario. */
   terminals: { id: string; name: string }[];
+  /** Texto de búsqueda vigente, para conservarlo en los enlaces. */
+  search: string;
   rainReason: string | null;
   /** Cifras ya calculadas en el servidor para el terminal mostrado. */
   progress: { bmDone: number; bodyDone: number; expected: number };
@@ -89,6 +92,10 @@ export function BusWashDailyActions({
     return `/lavado-buses/pendientes?${parametros.toString()}`;
   }
 
+  // `search` se recibe para que el componente se vuelva a renderizar cuando
+  // cambia la búsqueda; el valor lo pinta `SearchField` desde la propia URL.
+  void search;
+
   const bmPercent = porcentaje(progress.bmDone, progress.expected);
   const bodyPercent = porcentaje(progress.bodyDone, progress.expected);
 
@@ -110,6 +117,14 @@ export function BusWashDailyActions({
                 className="w-full lg:w-56"
               />
             )}
+
+            {/* Buscador junto al filtro: se busca por patente o número interno
+                mientras se está registrando, sin bajar hasta la tabla. */}
+            <SearchField
+              paramName="buscar"
+              placeholder="Patente o número interno…"
+              className="w-full lg:w-56"
+            />
 
             {/* Avance en línea, no en tarjetas: dos cifras no necesitan
                 doscientos píxeles de alto cada una. */}

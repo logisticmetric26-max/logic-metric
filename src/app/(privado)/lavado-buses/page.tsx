@@ -16,6 +16,7 @@ export const metadata: Metadata = { title: "Lavado Buses" };
 interface SearchParams {
   fecha?: string;
   terminal?: string;
+  buscar?: string;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -44,6 +45,11 @@ export default async function LavadoBusesPage({
       ? params.terminal
       : null;
   const terminalId = requestedTerminal ?? (terminalOptions.length === 1 ? terminalOptions[0].id : null);
+
+  // Búsqueda por PPU o número interno. Se resuelve en el servidor y no sólo en
+  // el navegador para que el filtro valga también sobre los buses que aún no
+  // se han traído a la página.
+  const search = (params.buscar ?? "").trim().toUpperCase();
 
   const supabase = await createClient();
 
@@ -112,6 +118,12 @@ export default async function LavadoBusesPage({
     );
     rows = (fleet ?? [])
       .filter((bus) => normalizeZone(bus.zone) !== "REDVAN")
+      .filter(
+        (bus) =>
+          search === "" ||
+          bus.ppu.toUpperCase().includes(search) ||
+          bus.internal_number.toUpperCase().includes(search),
+      )
       .map((bus) => {
         const record = recordMap.get(bus.id);
         const blockedByStatus = record?.in_repair || record?.no_wash;
@@ -175,6 +187,7 @@ export default async function LavadoBusesPage({
         rainReason={rainReason}
         progress={progress}
         terminals={terminalOptions}
+        search={params.buscar ?? ""}
       />
       <BusWashBoard
       initialRows={rows}
