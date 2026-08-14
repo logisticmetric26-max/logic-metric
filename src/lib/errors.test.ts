@@ -77,6 +77,26 @@ describe("toUserMessage", () => {
     }
   });
 
+  it("tambien reconoce errores estructurados por details, hint o code", () => {
+    expect(
+      toUserMessage({
+        message: "update or delete on table \"terminals\" violates foreign key constraint",
+        details:
+          'Key (id)=(abc) is still referenced from table "bus_wash_records" through constraint "bus_wash_records_terminal_id_fkey".',
+        code: "23503",
+      }),
+    ).toBe("No se puede eliminar el terminal porque tiene registros de lavado de buses asociados.");
+  });
+
+  it("usa un mensaje generico de dependencia si la FK del terminal no esta catalogada", () => {
+    expect(
+      toUserMessage({
+        message: 'update or delete on table "terminals" violates foreign key constraint "future_terminal_id_fkey"',
+        code: "23503",
+      }),
+    ).toBe("No se puede eliminar el terminal porque todavía tiene registros asociados.");
+  });
+
   it("traduce un rechazo de RLS como falta de acceso al terminal", () => {
     expect(
       toUserMessage(new Error('new row violates row-level security policy for table "fleet"')),

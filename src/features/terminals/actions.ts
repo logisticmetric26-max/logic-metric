@@ -131,6 +131,16 @@ export async function deleteTerminalAction(id: string): Promise<ActionResult> {
 
   const supabase = await createClient();
 
+  const { count, error: existsError } = await supabase
+    .from("terminals")
+    .select("id", { count: "exact", head: true })
+    .eq("id", id);
+
+  if (existsError) return actionError(reportError("deleteTerminalExistsCheck", existsError));
+  if ((count ?? 0) === 0) {
+    return actionError("El terminal indicado no existe o no está disponible.");
+  }
+
   /**
    * Se intenta borrar directamente y se deja que la base rechace cualquier
    * dependencia operativa real.
@@ -144,15 +154,9 @@ export async function deleteTerminalAction(id: string): Promise<ActionResult> {
    * PostgreSQL sigue siendo la fuente de verdad: si una FK impide borrar el
    * terminal, `toUserMessage()` traduce esa restricción al motivo correcto.
    */
-  const { data, error } = await supabase
-    .from("terminals")
-    .delete()
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
+  const { error } = await supabase.from("terminals").delete().eq("id", id);
 
   if (error) return actionError(reportError("deleteTerminal", error));
-  if (!data) return actionError("El terminal indicado no existe o no está disponible.");
 
   revalidatePath("/configuracion/terminales");
   revalidatePath("/configuracion/flota");

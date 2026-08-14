@@ -133,6 +133,14 @@ interface ErrorLike {
   hint?: string;
 }
 
+function getSearchableErrorText(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+
+  const candidate = error as ErrorLike;
+  return [candidate.message, candidate.details, candidate.hint, candidate.code].filter(Boolean).join(" ");
+}
+
 /**
  * Convierte cualquier error en un mensaje presentable.
  * Nunca devuelve texto crudo del motor de base de datos.
@@ -140,7 +148,7 @@ interface ErrorLike {
 export function toUserMessage(error: unknown): string {
   if (!error) return GENERIC_ERROR_MESSAGE;
 
-  const raw = typeof error === "string" ? error : ((error as ErrorLike)?.message ?? "");
+  const raw = getSearchableErrorText(error);
   if (!raw) return GENERIC_ERROR_MESSAGE;
 
   // Código de negocio explícito
@@ -155,6 +163,12 @@ export function toUserMessage(error: unknown): string {
 
   for (const [pattern, message] of CONSTRAINT_MESSAGES) {
     if (pattern.test(raw)) return message;
+  }
+
+  // Fallback defensivo: si aparece una FK al borrar terminales y todavía no se
+  // catalogó el constraint exacto, al menos se informa la causa real.
+  if (/foreign key constraint/i.test(raw) && /table "terminals"/i.test(raw)) {
+    return "No se puede eliminar el terminal porque todavía tiene registros asociados.";
   }
 
   return GENERIC_ERROR_MESSAGE;
