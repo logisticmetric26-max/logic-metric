@@ -32,3 +32,12 @@ export const badFuelLoadSchema = z.object({
 export const badFuelLoadUpdateSchema = badFuelLoadSchema.extend({
   id: uuidSchema,
 });
+
+export const badFuelLoadExportSchema = z.object({
+  q: z.string().trim().max(120).optional().or(z.literal("")),
+  desde: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
+  hasta: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
+  surtidor: uuidSchema.optional().or(z.literal("")),
+});
+
+export type BadFuelLoadExportInput = z.infer<typeof badFuelLoadExportSchema>;

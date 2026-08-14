@@ -13,6 +13,8 @@ const DISPENSERS_PATH = "/configuracion/surtidores";
 function parseDispenserForm(formData: FormData) {
   return {
     code: formData.get("code"),
+    terminal_name: formData.get("terminal_name"),
+    terminal_code: formData.get("terminal_code"),
     planner_rut: formData.get("planner_rut"),
     supervisor_rut: formData.get("supervisor_rut"),
     active: formData.get("active"),

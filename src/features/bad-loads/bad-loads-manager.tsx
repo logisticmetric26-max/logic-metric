@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CalendarDays,
   Clock3,
+  Download,
   Droplets,
   MoreVertical,
   Pencil,
@@ -23,6 +24,7 @@ import { useToast } from "@/components/ui/toast";
 import {
   createBadFuelLoadAction,
   deleteBadFuelLoadAction,
+  exportBadFuelLoadsCsvAction,
   updateBadFuelLoadAction,
 } from "@/features/bad-loads/actions";
 import { formatDateOnly, formatPpu } from "@/lib/format";
@@ -31,6 +33,8 @@ import type { BadFuelLoadViewRow } from "@/types/database.types";
 interface DispenserOption {
   id: string;
   code: string;
+  terminal_name: string;
+  terminal_code: string;
   active: boolean;
 }
 
@@ -44,6 +48,13 @@ interface Props {
   canEdit: boolean;
   canDelete: boolean;
   activeFilterCount: number;
+  mode: "active" | "history";
+  exportFilters: {
+    q?: string;
+    desde?: string;
+    hasta?: string;
+    surtidor?: string;
+  };
 }
 
 export function BadLoadsManager({
@@ -56,12 +67,15 @@ export function BadLoadsManager({
   canEdit,
   canDelete,
   activeFilterCount,
+  mode,
+  exportFilters,
 }: Props) {
   const toast = useToast();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<BadFuelLoadViewRow | null>(null);
   const [deleting, setDeleting] = useState<BadFuelLoadViewRow | null>(null);
   const [pending, startTransition] = useTransition();
+  const [exporting, startExportTransition] = useTransition();
 
   function confirmDelete() {
     if (!deleting) return;
@@ -80,17 +94,50 @@ export function BadLoadsManager({
     });
   }
 
+  function exportCsv() {
+    startExportTransition(async () => {
+      const result = await exportBadFuelLoadsCsvAction(exportFilters);
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      downloadCsv(result.data.file_name, result.data.csv_content);
+      toast.success(
+        `Archivo CSV generado con ${result.data.row_count} registro${result.data.row_count === 1 ? "" : "s"}.`,
+      );
+    });
+  }
+
   return (
     <>
       <Card className="overflow-visible">
         <FilterBar
           activeCount={activeFilterCount}
-          search={<SearchField placeholder="Buscar por PPU, numero interno o surtidor..." />}
+          search={
+            <SearchField placeholder="Buscar por PPU, numero interno, codigo bus, surtidor o terminal..." />
+          }
           actions={
-            canCreate ? (
-              <Button onClick={() => setCreating(true)} icon={<Plus className="size-4" aria-hidden />}>
-                Registrar mala carga
-              </Button>
+            mode === "active" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={exportCsv}
+                  loading={exporting}
+                  icon={<Download className="size-4" aria-hidden />}
+                >
+                  Exportar CSV
+                </Button>
+                {canCreate && (
+                  <Button
+                    onClick={() => setCreating(true)}
+                    icon={<Plus className="size-4" aria-hidden />}
+                  >
+                    Registrar mala carga
+                  </Button>
+                )}
+              </div>
             ) : undefined
           }
         >
@@ -99,7 +146,10 @@ export function BadLoadsManager({
           <FilterSelect
             paramName="surtidor"
             label="Surtidor"
-            options={dispensers.map((dispenser) => ({ value: dispenser.id, label: dispenser.code }))}
+            options={dispensers.map((dispenser) => ({
+              value: dispenser.id,
+              label: `${dispenser.code} | ${dispenser.terminal_code}`,
+            }))}
           />
         </FilterBar>
 
@@ -108,13 +158,17 @@ export function BadLoadsManager({
             icon={<AlertTriangle className="size-5" aria-hidden />}
             title={
               activeFilterCount > 0
-                ? "Ninguna mala carga coincide con los filtros"
-                : "No hay malas cargas registradas"
+                ? `Ninguna ${mode === "history" ? "mala carga historica" : "mala carga"} coincide con los filtros`
+                : mode === "history"
+                  ? "No hay malas cargas en el historico"
+                  : "No hay malas cargas registradas"
             }
             description={
               activeFilterCount > 0
                 ? "Modifique la busqueda o limpie los filtros aplicados."
-                : canCreate
+                : mode === "history"
+                  ? "Los registros exportados se visualizaran aqui."
+                  : canCreate
                   ? "Registre la primera mala carga indicando bus, fecha, hora, litros y surtidor."
                   : "Aun no se ha registrado ninguna mala carga."
             }
@@ -137,7 +191,7 @@ export function BadLoadsManager({
                           </span>
                         </span>
                       }
-                      subtitle={`${item.terminal_name} | Surtidor ${item.dispenser_code}`}
+                      subtitle={`Surtidor ${item.dispenser_code} | ${formatDispenserTerminal(item)}`}
                       fields={[
                         {
                           label: "Fecha",
@@ -154,9 +208,33 @@ export function BadLoadsManager({
                           value: formatLiters(item.liters),
                           icon: <Droplets className="size-3" aria-hidden />,
                         },
+                        {
+                          label: "Terminal surtidor",
+                          value: formatDispenserTerminal(item),
+                        },
+                        {
+                          label: "Codigo bus",
+                          value: item.reader_code ?? fallbackBusCode(item.internal_number),
+                        },
+                        {
+                          label: "Registrado por",
+                          value: item.created_by_name ?? "Sin dato",
+                        },
+                        ...(mode === "history"
+                          ? [
+                              {
+                                label: "Exportado",
+                                value: item.exported_by_name ?? "Sin dato",
+                              },
+                              {
+                                label: "Archivo",
+                                value: item.export_file_name ?? "Sin archivo",
+                              },
+                            ]
+                          : []),
                       ]}
                       actions={
-                        canEdit || canDelete ? (
+                        mode === "active" && (canEdit || canDelete) ? (
                           <BadLoadRowMenu
                             onEdit={canEdit ? () => setEditing(item) : undefined}
                             onDelete={canDelete ? () => setDeleting(item) : undefined}
@@ -173,7 +251,7 @@ export function BadLoadsManager({
         )}
       </Card>
 
-      {canCreate && creating && (
+      {mode === "active" && canCreate && creating && (
         <BadLoadFormModal
           open
           dispensers={dispensers}
@@ -185,7 +263,7 @@ export function BadLoadsManager({
         />
       )}
 
-      {canEdit && editing && (
+      {mode === "active" && canEdit && editing && (
         <BadLoadFormModal
           open
           item={editing}
@@ -411,7 +489,7 @@ function BadLoadFormModal({
             </option>
             {dispenserOptions.map((dispenser) => (
               <option key={dispenser.id} value={dispenser.id}>
-                {dispenser.code}
+                {dispenser.code} | {dispenser.terminal_code}
                 {dispenser.active ? "" : " (inactivo)"}
               </option>
             ))}
@@ -427,4 +505,33 @@ function formatLiters(value: number) {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value)} L`;
+}
+
+function downloadCsv(fileName: string, csvContent: string) {
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function fallbackBusCode(internalNumber: string) {
+  const digits = internalNumber.replace(/\D/g, "");
+  if (!digits) return internalNumber.trim().toUpperCase();
+  return `BUS${digits.padStart(4, "0")}`;
+}
+
+function formatDispenserTerminal(
+  item: Pick<BadFuelLoadViewRow, "dispenser_terminal_name" | "dispenser_terminal_code" | "terminal_name">,
+) {
+  if (item.dispenser_terminal_name && item.dispenser_terminal_code) {
+    return `${item.dispenser_terminal_name} (${item.dispenser_terminal_code})`;
+  }
+
+  return item.dispenser_terminal_name || item.terminal_name;
 }

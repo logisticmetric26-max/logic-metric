@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BadLoadsManager } from "@/features/bad-loads/bad-loads-manager";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Malas cargas" };
+export const metadata: Metadata = { title: "Historico de malas cargas" };
 
 const PAGE_SIZE = 25;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -20,12 +20,12 @@ interface SearchParams {
   pagina?: string;
 }
 
-export default async function MalasCargasPage({
+export default async function HistoricoMalasCargasPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const context = await requirePermission(PERMISSIONS.badLoads.view);
+  await requirePermission(PERMISSIONS.badLoads.view);
   const params = await searchParams;
 
   const page = parsePageParam(params.pagina);
@@ -35,7 +35,8 @@ export default async function MalasCargasPage({
   let query = supabase
     .from("bad_fuel_loads_view")
     .select("*", { count: "planned" })
-    .is("exported_at", null)
+    .not("exported_at", "is", null)
+    .order("exported_at", { ascending: false })
     .order("load_date", { ascending: false })
     .order("load_time", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
@@ -45,7 +46,7 @@ export default async function MalasCargasPage({
     const ppuPattern = `%${escapeLikePattern(raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}%`;
     const textPattern = `%${escapeLikePattern(raw.toUpperCase())}%`;
     query = query.or(
-      `ppu.ilike.${ppuPattern},internal_number.ilike.${textPattern},reader_code.ilike.${textPattern},dispenser_code.ilike.${textPattern},dispenser_terminal_name.ilike.${textPattern},dispenser_terminal_code.ilike.${textPattern},created_by_name.ilike.${textPattern}`,
+      `ppu.ilike.${ppuPattern},internal_number.ilike.${textPattern},reader_code.ilike.${textPattern},dispenser_code.ilike.${textPattern},dispenser_terminal_name.ilike.${textPattern},dispenser_terminal_code.ilike.${textPattern},created_by_name.ilike.${textPattern},export_file_name.ilike.${textPattern}`,
     );
   }
 
@@ -63,8 +64,8 @@ export default async function MalasCargasPage({
     ]);
 
   if (error || dispenserError) {
-    reportError("badLoadsPage", error ?? dispenserError);
-    return <ErrorState description="No fue posible obtener el listado de malas cargas." />;
+    reportError("badLoadsHistoryPage", error ?? dispenserError);
+    return <ErrorState description="No fue posible obtener el historico de malas cargas." />;
   }
 
   const activeFilterCount = [params.q, params.desde, params.hasta, params.surtidor].filter(
@@ -78,17 +79,12 @@ export default async function MalasCargasPage({
       page={page}
       pageSize={PAGE_SIZE}
       dispensers={dispensers ?? []}
-      canCreate={context.permissions.includes(PERMISSIONS.badLoads.create)}
-      canEdit={context.permissions.includes(PERMISSIONS.badLoads.edit)}
-      canDelete={context.permissions.includes(PERMISSIONS.badLoads.delete)}
+      canCreate={false}
+      canEdit={false}
+      canDelete={false}
       activeFilterCount={activeFilterCount}
-      mode="active"
-      exportFilters={{
-        q: params.q,
-        desde: params.desde,
-        hasta: params.hasta,
-        surtidor: params.surtidor,
-      }}
+      mode="history"
+      exportFilters={{}}
     />
   );
 }

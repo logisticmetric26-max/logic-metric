@@ -82,6 +82,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   "revision-tecnica": "Revision Tecnica",
   combustible: "Combustible",
   "malas-cargas": "Malas cargas",
+  historico: "Historico",
   "lavado-buses": "Lavado Buses",
   "en-revision": "En revision",
   "no-enviados": "No enviados",

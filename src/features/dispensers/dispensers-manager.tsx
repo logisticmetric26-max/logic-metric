@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import {
+  Building2,
   CalendarDays,
   Droplets,
+  Hash,
   MoreVertical,
   Pencil,
   Plus,
@@ -91,7 +93,7 @@ export function DispensersManager({
       <Card className="overflow-visible">
         <FilterBar
           activeCount={activeFilterCount}
-          search={<SearchField placeholder="Buscar surtidor o RUT..." />}
+          search={<SearchField placeholder="Buscar surtidor, terminal, codigo terminal o RUT..." />}
           actions={
             canCreate ? (
               <Button onClick={() => setCreating(true)} icon={<Plus className="size-4" aria-hidden />}>
@@ -136,9 +138,19 @@ export function DispensersManager({
                     icon={<Droplets className="size-[19px]" aria-hidden />}
                     tone={dispenser.active ? "info" : "neutral"}
                     title={dispenser.code}
-                    subtitle="Surtidor operacional"
+                    subtitle={dispenser.terminal_name}
                     badge={<ActiveBadge active={dispenser.active} />}
                     fields={[
+                      {
+                        label: "Codigo terminal",
+                        value: dispenser.terminal_code,
+                        icon: <Hash className="size-3" aria-hidden />,
+                      },
+                      {
+                        label: "Terminal",
+                        value: dispenser.terminal_name,
+                        icon: <Building2 className="size-3" aria-hidden />,
+                      },
                       {
                         label: "Planillero",
                         value: formatRut(dispenser.planner_rut),
@@ -358,7 +370,9 @@ function DispenserFormModal({
       busy={pending}
       title={dispenser ? "Editar surtidor" : "Nuevo surtidor"}
       description={
-        dispenser ? undefined : "Registre el surtidor con su planillero y supervisor responsable."
+        dispenser
+          ? undefined
+          : "Registre el surtidor con su terminal, codigo terminal, planillero y supervisor responsable."
       }
       footer={
         <>
@@ -381,6 +395,39 @@ function DispenserFormModal({
             maxLength={30}
             autoFocus
             invalid={Boolean(fieldErrors.code)}
+          />
+        </Field>
+
+        <Field
+          label="Terminal"
+          required
+          error={fieldErrors.terminal_name}
+          htmlFor="dispenser-terminal-name"
+        >
+          <Input
+            id="dispenser-terminal-name"
+            name="terminal_name"
+            defaultValue={dispenser?.terminal_name ?? ""}
+            required
+            maxLength={120}
+            invalid={Boolean(fieldErrors.terminal_name)}
+          />
+        </Field>
+
+        <Field
+          label="Codigo terminal"
+          required
+          error={fieldErrors.terminal_code}
+          htmlFor="dispenser-terminal-code"
+        >
+          <Input
+            id="dispenser-terminal-code"
+            name="terminal_code"
+            defaultValue={dispenser?.terminal_code ?? ""}
+            required
+            maxLength={30}
+            autoCapitalize="characters"
+            invalid={Boolean(fieldErrors.terminal_code)}
           />
         </Field>
 

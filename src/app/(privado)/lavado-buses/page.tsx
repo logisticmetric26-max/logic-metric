@@ -26,6 +26,7 @@ export default async function LavadoBusesPage({
   const previousDate = subtractDaysFromDateOnly(date, 1);
 
   const supabase = await createClient();
+  let rows: BusWashListRow[];
 
   try {
     const [
@@ -58,7 +59,7 @@ export default async function LavadoBusesPage({
     const previousDayBodyWashSet = new Set(
       (previousDayRecords ?? []).map((record) => record.fleet_id),
     );
-    const rows: BusWashListRow[] = (fleet ?? [])
+    rows = (fleet ?? [])
       .filter((bus) => normalizeZone(bus.zone) !== "REDVAN")
       .map((bus) => {
         const record = recordMap.get(bus.id);
@@ -80,18 +81,18 @@ export default async function LavadoBusesPage({
           updated_at: record?.updated_at ?? null,
         };
       });
-
-    return (
-      <BusWashBoard
-        initialRows={rows}
-        date={date}
-        canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
-      />
-    );
   } catch (error) {
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
   }
+
+  return (
+    <BusWashBoard
+      initialRows={rows}
+      date={date}
+      canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
+    />
+  );
 }
 
 function subtractDaysFromDateOnly(value: string, days: number) {

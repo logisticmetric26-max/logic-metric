@@ -23,7 +23,7 @@ export default async function SurtidoresPage({
   if (q?.trim()) {
     const pattern = `%${escapeLikePattern(q.trim())}%`;
     query = query.or(
-      `code.ilike.${pattern},planner_rut.ilike.${pattern},supervisor_rut.ilike.${pattern}`,
+      `code.ilike.${pattern},terminal_name.ilike.${pattern},terminal_code.ilike.${pattern},planner_rut.ilike.${pattern},supervisor_rut.ilike.${pattern}`,
     );
   }
 

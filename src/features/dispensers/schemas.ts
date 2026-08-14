@@ -16,6 +16,15 @@ export const dispenserSchema = z.object({
       (value) => /^[A-Z0-9][A-Z0-9_-]{0,29}$/.test(value),
       "El codigo solo admite letras, numeros, guion y guion bajo.",
     ),
+  terminal_name: requiredText("el terminal", 120).transform((value) =>
+    value.replace(/\s+/g, " "),
+  ),
+  terminal_code: requiredText("el codigo del terminal", 30)
+    .transform((value) => value.toUpperCase())
+    .refine(
+      (value) => /^[A-Z0-9][A-Z0-9 _-]{0,29}$/.test(value),
+      "El codigo del terminal solo admite letras, numeros, espacios, guion y guion bajo.",
+    ),
   planner_rut: dispenserRutField,
   supervisor_rut: dispenserRutField,
   active: checkboxSchema,

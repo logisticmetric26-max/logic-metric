@@ -157,6 +157,8 @@ export type BusWashExportRow = {
 export type DispenserRow = {
   id: string;
   code: string;
+  terminal_name: string;
+  terminal_code: string;
   planner_rut: string;
   supervisor_rut: string;
   active: boolean;
@@ -176,6 +178,9 @@ export type BadFuelLoadRow = {
   liters: number;
   created_by: string;
   updated_by: string | null;
+  exported_at: string | null;
+  exported_by: string | null;
+  export_file_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -421,10 +426,15 @@ export type BadFuelLoadViewRow = {
   fleet_id: string;
   internal_number: string;
   ppu: string;
+  reader_code: string | null;
   terminal_id: string;
   terminal_name: string;
   dispenser_id: string;
   dispenser_code: string;
+  dispenser_terminal_name: string;
+  dispenser_terminal_code: string;
+  planner_rut: string;
+  supervisor_rut: string;
   load_date: string;
   load_time: string;
   liters: number;
@@ -432,6 +442,10 @@ export type BadFuelLoadViewRow = {
   created_by_name: string | null;
   updated_by: string | null;
   updated_by_name: string | null;
+  exported_at: string | null;
+  exported_by: string | null;
+  exported_by_name: string | null;
+  export_file_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -616,7 +630,13 @@ export type Database = {
         Row: BadFuelLoadRow;
         Insert: WithDefaults<
           BadFuelLoadRow,
-          "id" | "updated_by" | "created_at" | "updated_at"
+          | "id"
+          | "updated_by"
+          | "exported_at"
+          | "exported_by"
+          | "export_file_name"
+          | "created_at"
+          | "updated_at"
         >;
         Update: Partial<BadFuelLoadRow>;
         Relationships: [];
