@@ -193,10 +193,15 @@ export default async function LavadoBusesPage({
         search={params.buscar ?? ""}
       />
       <BusWashBoard
-      initialRows={rows}
-      date={date}
-      existingRecordCount={existingRecordCount}
-      existingZones={existingZones}
+        /* El tablero copia las filas a su estado interno y sólo las toma al
+           montarse. Sin esta `key`, cambiar de terminal actualizaba la URL y
+           los datos del servidor, pero la tabla seguía mostrando la flota
+           anterior hasta recargar la página a mano. */
+        key={`${date}-${terminalId ?? "todos"}-${search}`}
+        initialRows={rows}
+        date={date}
+        existingRecordCount={existingRecordCount}
+        existingZones={existingZones}
         canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
       />
     </>

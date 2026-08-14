@@ -48,6 +48,17 @@ export function BusWashBoard({
 }) {
   const toast = useToast();
   const [rows, setRows] = useState(initialRows);
+
+  // Red de seguridad: si el servidor manda otra flota —cambió el terminal, la
+  // fecha o la búsqueda— el estado interno se pone al día durante el render.
+  // Es el patrón que React recomienda para ajustar estado ante un cambio de
+  // prop, y no un efecto: sin él, la tabla se quedaba mostrando la flota
+  // anterior y había que recargar la página a mano.
+  const [semilla, setSemilla] = useState(initialRows);
+  if (semilla !== initialRows) {
+    setSemilla(initialRows);
+    setRows(initialRows);
+  }
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
