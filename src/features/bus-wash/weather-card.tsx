@@ -1,5 +1,4 @@
 import { CloudRain, Sun, CloudDrizzle } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { WeatherDay } from "@/features/bus-wash/weather";
 
@@ -16,80 +15,37 @@ export function BusWashWeatherCard({ days, today }: { days: WeatherDay[]; today:
   const conLluvia = days.filter((day) => day.discouragesBodyWash);
 
   return (
-    <Card solid className="mb-4">
-      <div className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-ink">
-            Proyección de la semana
-          </h3>
-          <p className="text-[11.5px] text-ink-muted">
-            {conLluvia.length === 0
-              ? "Sin lluvia prevista: se puede lavar carrocería toda la semana."
-              : `${conLluvia.length} ${conLluvia.length === 1 ? "día con lluvia prevista" : "días con lluvia prevista"}: adelante lavados a los días secos.`}
-          </p>
-        </div>
+    <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg border border-border bg-surface px-3 py-2">
+      <span className="text-[10.5px] font-semibold tracking-[0.05em] text-ink-subtle uppercase">
+        Semana
+      </span>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {days.map((day) => {
-            const esHoy = day.date === today;
-            const Icono = day.discouragesBodyWash
-              ? CloudRain
-              : day.rainChance >= 30
-                ? CloudDrizzle
-                : Sun;
+      {days.map((day) => {
+        const esHoy = day.date === today;
+        const Icono = day.discouragesBodyWash ? CloudRain : day.rainChance >= 30 ? CloudDrizzle : Sun;
 
-            return (
-              <div
-                key={day.date}
-                className={cn(
-                  "rounded-md border px-3 py-2.5 transition-colors",
-                  day.discouragesBodyWash
-                    ? "border-info-200 bg-info-50"
-                    : "border-border bg-surface-subtle",
-                  esHoy && "ring-2 ring-brand-200",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      "text-[11px] font-semibold tracking-[0.03em] uppercase",
-                      esHoy ? "text-brand-700" : "text-ink-muted",
-                    )}
-                  >
-                    {day.label}
-                    {esHoy && " · hoy"}
-                  </span>
-                  <Icono
-                    className={cn(
-                      "size-4 shrink-0",
-                      day.discouragesBodyWash ? "text-info-600" : "text-ink-subtle",
-                    )}
-                    aria-hidden
-                  />
-                </div>
+        return (
+          <span
+            key={day.date}
+            title={`${day.rainChance}% · ${day.rainMm.toFixed(1)} mm · ${day.minTemp}°/${day.maxTemp}°${day.discouragesBodyWash ? " · no lavar carrocería" : ""}`}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] whitespace-nowrap",
+              day.discouragesBodyWash ? "bg-info-50 text-info-700" : "text-ink-secondary",
+              esHoy && "ring-1 ring-brand-200",
+            )}
+          >
+            <Icono className="size-3.5 shrink-0" aria-hidden />
+            <span className={cn("font-medium", esHoy && "text-brand-700")}>{day.label}</span>
+            <span className="tabular-nums text-ink-muted">{day.rainChance}%</span>
+          </span>
+        );
+      })}
 
-                <p className="mt-1.5 text-[15px] leading-none font-semibold text-ink tabular-nums">
-                  {day.rainChance}%
-                </p>
-                <p className="mt-1 text-[10.5px] text-ink-subtle tabular-nums">
-                  {day.rainMm.toFixed(1).replace(".", ",")} mm · {day.minTemp}°/{day.maxTemp}°
-                </p>
-
-                {day.discouragesBodyWash && (
-                  <p className="mt-1.5 text-[10.5px] leading-tight font-medium text-info-700">
-                    Sin carrocería · sí B&M
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <p className="text-[11px] leading-snug text-ink-subtle">
-          Es una previsión, no una orden: si el día amanece seco, lave igual. El barrido y mopeo se
-          hace llueva o no.
-        </p>
-      </div>
-    </Card>
+      <span className="ml-auto text-[11px] text-ink-subtle">
+        {conLluvia.length === 0
+          ? "Sin lluvia prevista"
+          : `${conLluvia.length} ${conLluvia.length === 1 ? "día" : "días"} sin carrocería · B&M igual`}
+      </span>
+    </div>
   );
 }

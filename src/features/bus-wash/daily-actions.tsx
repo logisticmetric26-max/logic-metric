@@ -83,88 +83,88 @@ export function BusWashDailyActions({
 
   return (
     <>
-      <Card solid className="mb-4">
-        <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-          {/* El selector filtra el listado completo, no sólo estas cifras:
-              la consulta se hace ya filtrada en la base. */}
-          {terminals.length > 1 && (
-            <FilterSelect
-              paramName="terminal"
-              label="Terminal"
-              allLabel="Todos mis terminales"
-              options={terminals.map((terminal) => ({ value: terminal.id, label: terminal.name }))}
-              className="w-full sm:max-w-xs"
-            />
-          )}
+      {/* UNA sola barra: filtro, avance y acciones.
+          Antes eran tres tarjetas apiladas que empujaban la tabla fuera de la
+          pantalla; en un control diario, la tabla es el trabajo y todo lo demás
+          es contexto que debe caber en una franja. */}
+      <Card solid className="mb-3">
+        <div className="flex flex-col gap-3 px-3 py-3 sm:px-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            {terminals.length > 1 && (
+              <FilterSelect
+                paramName="terminal"
+                label=""
+                allLabel="Todos mis terminales"
+                options={terminals.map((terminal) => ({ value: terminal.id, label: terminal.name }))}
+                className="w-full lg:w-56"
+              />
+            )}
 
-          {/* Avance del día, sin metas: cuántos van de cuántos. */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Progreso etiqueta="Barrido y mopeo" done={progress.bmDone} total={progress.expected} percent={bmPercent} />
-            <Progreso etiqueta="Lavado de carrocería" done={progress.bodyDone} total={progress.expected} percent={bodyPercent} />
+            {/* Avance en línea, no en tarjetas: dos cifras no necesitan
+                doscientos píxeles de alto cada una. */}
+            <div className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-2">
+              <Avance etiqueta="B&M" done={progress.bmDone} total={progress.expected} percent={bmPercent} />
+              <Avance etiqueta="Carrocería" done={progress.bodyDone} total={progress.expected} percent={bodyPercent} />
+            </div>
+
+            {canEdit && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => marcarTodos("bm_completed", "barrido y mopeo")}
+                  icon={
+                    pending ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Sparkles className="size-4" aria-hidden />
+                    )
+                  }
+                >
+                  Todo B&M
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => marcarTodos("body_wash_completed", "lavado de carrocería")}
+                  icon={
+                    pending ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Check className="size-4" aria-hidden />
+                    )
+                  }
+                >
+                  Todo lavado
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={rainReason ? "subtle" : "ghost"}
+                  disabled={pending || !terminalId}
+                  title={terminalId ? undefined : "Elija un terminal para justificar la lluvia"}
+                  onClick={() => setRainOpen(true)}
+                  icon={<CloudRain className="size-4" aria-hidden />}
+                >
+                  Lluvia
+                </Button>
+              </div>
+            )}
           </div>
 
-          {canEdit && (
-            <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-center">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={pending}
-                    onClick={() => marcarTodos("bm_completed", "barrido y mopeo")}
-                    icon={
-                      pending ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Sparkles className="size-4" aria-hidden />
-                      )
-                    }
-                  >
-                    Registrar B&M de todos
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={pending}
-                    onClick={() => marcarTodos("body_wash_completed", "lavado de carrocería")}
-                    icon={
-                      pending ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Check className="size-4" aria-hidden />
-                      )
-                    }
-                  >
-                    Registrar lavado de todos
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant={rainReason ? "subtle" : "ghost"}
-                    // La lluvia se justifica POR terminal: con «todos» no se
-                    // sabría a cuál atribuirla.
-                    disabled={pending || !terminalId}
-                    title={terminalId ? undefined : "Elija un terminal para justificar la lluvia"}
-                    onClick={() => setRainOpen(true)}
-                    icon={<CloudRain className="size-4" aria-hidden />}
-                  >
-                    {rainReason ? "Día de lluvia registrado" : "Marcar día de lluvia"}
-                  </Button>
-
-                  <p className="text-[11.5px] text-ink-muted sm:ml-auto">
-                    Se aplica a <strong className="font-medium text-ink-secondary">{alcanceLabel}</strong>.
-                    No toca los buses en reparación ni los marcados «no se lava».
-                  </p>
-            </div>
-          )}
-
-          {rainReason && (
-            <p className="flex items-start gap-2 rounded-md bg-info-50 px-3 py-2 text-[12px] text-info-700">
-              <CloudRain className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span>
-                <strong className="font-medium">Día de lluvia.</strong> {rainReason}
+          <p className="text-[11px] leading-snug text-ink-subtle">
+            Los registros masivos se aplican a{" "}
+            <strong className="font-medium text-ink-secondary">{alcanceLabel}</strong> y no tocan los
+            buses en reparación ni los marcados «no se lava».
+            {rainReason && (
+              <span className="ml-1 text-info-700">
+                · Día de lluvia: {rainReason}
               </span>
-            </p>
-          )}
+            )}
+          </p>
         </div>
       </Card>
 
@@ -187,7 +187,7 @@ function porcentaje(done: number, total: number): number | null {
   return Math.round((done / total) * 100);
 }
 
-function Progreso({
+function Avance({
   etiqueta,
   done,
   total,
@@ -199,24 +199,23 @@ function Progreso({
   percent: number | null;
 }) {
   return (
-    <div>
+    <div className="min-w-[9rem] flex-1">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[12px] font-medium text-ink-secondary">{etiqueta}</span>
-        <span className="text-[19px] leading-none font-semibold tracking-[-0.02em] text-ink tabular-nums">
+        <span className="text-[11px] font-medium text-ink-secondary">{etiqueta}</span>
+        <span className="text-[13px] leading-none font-semibold text-ink tabular-nums">
           {percent === null ? "—" : `${percent}%`}
+          <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">
+            {formatNumber(done)}/{formatNumber(total)}
+          </span>
         </span>
       </div>
 
-      <div className="mt-2 h-[6px] w-full overflow-hidden rounded-full bg-fill-subtle">
+      <div className="mt-1 h-[5px] w-full overflow-hidden rounded-full bg-fill-subtle">
         <div
-          className={cn("h-full rounded-full bg-brand-600 transition-[width] duration-500 ease-[var(--ease-emphasis)]")}
+          className={cn("h-full rounded-full bg-brand-600 transition-[width] duration-500")}
           style={{ width: `${percent ?? 0}%` }}
         />
       </div>
-
-      <p className="mt-1 text-[11px] text-ink-subtle tabular-nums">
-        {formatNumber(done)} de {formatNumber(total)} buses
-      </p>
     </div>
   );
 }
