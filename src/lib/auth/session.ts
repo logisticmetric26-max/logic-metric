@@ -29,7 +29,13 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   // sale de las credenciales ya validadas — no de la cookie, que sí sería
   // manipulable. Un token con firma correcta pero de un usuario eliminado
   // devuelve contexto vacío y cae en el camino de abajo.
-  const { data } = await supabase.rpc("current_user_context");
+  const { data, error } = await supabase.rpc("current_user_context");
+
+  // Si la base no respondió, se lanza en vez de continuar con contexto vacío:
+  // seguir haría creer al resto del código que el usuario no tiene ficha y lo
+  // mandaría a /sin-perfil, cerrándole la sesión por una caída ajena a él.
+  if (error) throw error;
+
   const context = data as CurrentUserContext | null;
 
   if (context?.profile) {

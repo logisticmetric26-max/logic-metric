@@ -73,7 +73,20 @@ export async function signInAction(formData: FormData): Promise<ActionResult<{ n
   }
 
   // Sesión establecida: ahora se comprueba que el usuario pueda operar.
-  const { data } = await supabase.rpc("current_user_context");
+  const { data, error: contextError } = await supabase.rpc("current_user_context");
+
+  // Distinguir «la base no respondió» de «no tiene ficha». Ignorar el error
+  // hacía que una caída de la base de datos se anunciara como «su usuario no
+  // tiene una ficha activa», con la sesión cerrada de propina: un problema de
+  // infraestructura disfrazado de problema de cuenta, y la persona buscando
+  // qué hizo mal.
+  if (contextError) {
+    reportError("signInAction.context", contextError);
+    return actionError(
+      "La base de datos no está respondiendo en este momento. Espere unos minutos y vuelva a intentar.",
+    );
+  }
+
   const context = data as CurrentUserContext | null;
 
   if (!context?.profile) {
