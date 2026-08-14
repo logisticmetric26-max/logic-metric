@@ -6,11 +6,14 @@ import { ErrorState } from "@/components/ui/feedback";
 import { BusWashBoard, type BusWashListRow } from "@/features/bus-wash/bus-wash-board";
 import { reportError } from "@/lib/errors";
 import { todayInZone } from "@/lib/format";
+import { computeCompliance, type TerminalCompliance } from "@/features/bus-wash/compliance";
+import { BusWashCompliancePanel } from "@/features/bus-wash/compliance-panel";
 
 export const metadata: Metadata = { title: "Lavado Buses" };
 
 interface SearchParams {
   fecha?: string;
+  terminal?: string;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,10 +28,27 @@ export default async function LavadoBusesPage({
   const date = params.fecha && DATE_PATTERN.test(params.fecha) ? params.fecha : todayInZone();
   const previousDate = subtractDaysFromDateOnly(date, 1);
 
+  // Sólo se acepta un terminal que el usuario tenga autorizado. RLS lo
+  // rechazaría igualmente, pero así el filtro no queda en un estado imposible
+  // y el desplegable nunca ofrece un terminal ajeno.
+  const terminalOptions = context.terminals.map((terminal) => ({
+    id: terminal.id,
+    name: terminal.name,
+  }));
+
+  // Con un solo terminal autorizado no hay nada que elegir: se fija a ése.
+  const requestedTerminal =
+    params.terminal && terminalOptions.some((terminal) => terminal.id === params.terminal)
+      ? params.terminal
+      : null;
+  const terminalId = requestedTerminal ?? (terminalOptions.length === 1 ? terminalOptions[0].id : null);
+
   const supabase = await createClient();
   let rows: BusWashListRow[];
   let existingRecordCount = 0;
   let existingZones: string[] = [];
+  let compliance: TerminalCompliance[] = [];
+  let targetPercent = 90;
 
   try {
     const [
@@ -38,24 +58,39 @@ export default async function LavadoBusesPage({
       { count: recordCount, error: recordCountError },
     ] =
       await Promise.all([
-        supabase
-          .from("fleet_view")
-          .select("id, internal_number, ppu, terminal_id, terminal_name, active, zone")
-          .order("zone", { ascending: true, nullsFirst: false })
-          .order("internal_number"),
-        supabase
-          .from("bus_wash_records")
-          .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash, updated_at")
-          .eq("record_date", date),
-        supabase
-          .from("bus_wash_records")
-          .select("fleet_id, body_wash_completed")
-          .eq("record_date", previousDate)
-          .eq("body_wash_completed", true),
-        supabase
-          .from("bus_wash_records")
-          .select("id", { count: "exact", head: true })
-          .eq("record_date", date),
+        // Filtrar en la BASE y no en el navegador: sin esto se traían los 937
+        // buses de todos los terminales en cada carga, y era la causa de que la
+        // pantalla tardara en responder.
+        withTerminal(
+          supabase
+            .from("fleet_view")
+            .select("id, internal_number, ppu, terminal_id, terminal_name, active, zone")
+            .order("zone", { ascending: true, nullsFirst: false })
+            .order("internal_number"),
+          terminalId,
+        ),
+        withTerminal(
+          supabase
+            .from("bus_wash_records")
+            .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash, updated_at")
+            .eq("record_date", date),
+          terminalId,
+        ),
+        withTerminal(
+          supabase
+            .from("bus_wash_records")
+            .select("fleet_id, body_wash_completed")
+            .eq("record_date", previousDate)
+            .eq("body_wash_completed", true),
+          terminalId,
+        ),
+        withTerminal(
+          supabase
+            .from("bus_wash_records")
+            .select("id", { count: "exact", head: true })
+            .eq("record_date", date),
+          terminalId,
+        ),
       ]);
 
     if (fleetError) throw fleetError;
@@ -93,19 +128,48 @@ export default async function LavadoBusesPage({
       });
 
     existingZones = [...new Set(rows.filter(hasAnyStatus).map((row) => normalizeZoneLabel(row.zone)))].sort();
+
+    // Meta y justificaciones de lluvia: dos lecturas pequeñas que no bloquean
+    // el listado y se piden a la vez.
+    const [{ data: target }, { data: rainDays }] = await Promise.all([
+      supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "bus_wash.daily_target_percent")
+        .maybeSingle(),
+      withTerminal(
+        supabase.from("bus_wash_rain_days").select("terminal_id, reason").eq("record_date", date),
+        terminalId,
+      ),
+    ]);
+
+    const parsedTarget = Number(target?.value ?? 90);
+    targetPercent = Number.isFinite(parsedTarget) ? parsedTarget : 90;
+
+    compliance = computeCompliance(rows, {
+      targetPercent,
+      rainReasons: new Map((rainDays ?? []).map((day) => [day.terminal_id, day.reason])),
+    });
   } catch (error) {
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
   }
 
   return (
-    <BusWashBoard
+    <>
+      <BusWashCompliancePanel
+        terminals={terminalOptions}
+        compliance={compliance}
+        targetPercent={targetPercent}
+      />
+      <BusWashBoard
       initialRows={rows}
       date={date}
       existingRecordCount={existingRecordCount}
       existingZones={existingZones}
-      canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
-    />
+        canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
+      />
+    </>
   );
 }
 
@@ -131,4 +195,18 @@ function normalizeZoneLabel(zone: string | null | undefined) {
 
 function hasAnyStatus(row: Pick<BusWashListRow, "bm_completed" | "body_wash_completed" | "in_repair" | "no_wash">) {
   return row.bm_completed || row.body_wash_completed || row.in_repair || row.no_wash;
+}
+
+/**
+ * Aplica el filtro de terminal a una consulta, si lo hay.
+ *
+ * Se define una vez y se usa en las cuatro consultas: repetir el `eq` a mano en
+ * cada una es justo la forma de que un día se olvide en la de arriba y la
+ * pantalla mezcle terminales sin que nadie lo note.
+ */
+function withTerminal<T extends { eq: (column: string, value: string) => T }>(
+  query: T,
+  terminalId: string | null,
+): T {
+  return terminalId ? query.eq("terminal_id", terminalId) : query;
 }

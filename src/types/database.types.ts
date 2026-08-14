@@ -471,6 +471,15 @@ export type PermissionOverrideSummary = {
   granted: boolean;
 }
 
+/** §Lavado · justificación de que un terminal no lavó carrocería por lluvia. */
+export type BusWashRainDayRow = {
+  terminal_id: string;
+  record_date: string;
+  reason: string;
+  created_by: string | null;
+  created_at: string;
+}
+
 export type ProfileViewRow = {
   id: string;
   rut: string;
@@ -618,6 +627,12 @@ export type Database = {
           | "updated_by"
         >;
         Update: Partial<FleetRow>;
+        Relationships: [];
+      };
+      bus_wash_rain_days: {
+        Row: BusWashRainDayRow;
+        Insert: WithDefaults<BusWashRainDayRow, "created_by" | "created_at">;
+        Update: Partial<BusWashRainDayRow>;
         Relationships: [];
       };
       bus_wash_records: {
