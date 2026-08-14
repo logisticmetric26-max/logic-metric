@@ -34,6 +34,13 @@ function useUrlState() {
 
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname);
+
+    // `replace` solo NO basta: el router de Next guarda en caché la respuesta
+    // del servidor por ruta, así que al cambiar un filtro volvía a pintar la
+    // tabla anterior y sólo se corregía recargando a mano. `refresh()` obliga a
+    // volver a pedirla, conservando el estado del cliente (modales abiertos,
+    // texto escrito) que una recarga completa sí perdería.
+    router.refresh();
   }
 
   return { searchParams, setParams, pathname, router };

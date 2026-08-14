@@ -77,6 +77,9 @@ export default async function LavadoBusesPage({
           supabase
             .from("fleet_view")
             .select("id, internal_number, ppu, terminal_id, terminal_name, active, zone")
+            // Los buses de baja no se asean: filtrarlos en la base evita
+            // traerlos y descartarlos después en el navegador.
+            .eq("active", true)
             .order("zone", { ascending: true, nullsFirst: false })
             .order("internal_number"),
           terminalId,

@@ -118,27 +118,16 @@ export function BusWashBoard({
   }
 
   function handleLoadDaySubmit(event: FormEvent<HTMLFormElement>) {
-    if (!canEdit) return;
-
-    const incompleteRows = rows.filter((row) => !hasAnyStatus(row));
-    if (incompleteRows.length === 0) return;
-
-    event.preventDefault();
-    window.alert(
-      `El registro del dia no esta completo. Faltan ${formatNumber(incompleteRows.length)} buses por registrar.`,
-    );
+    // Antes se bloqueaba el envío si faltaban buses por registrar. El histórico
+    // tiene que recibir la flota entera cada día: «sin registro» también es
+    // información —dice que ese bus no se aseó— y negarse a guardar dejaba el
+    // día sin ningún respaldo, que es peor que uno parcial.
+    if (!canEdit) event.preventDefault();
   }
 
   function handleDayExport() {
-    const incompleteRows = rows.filter((row) => !hasAnyStatus(row));
-
-    if (incompleteRows.length > 0) {
-      window.alert(
-        `El registro del dia no esta completo. Faltan ${formatNumber(incompleteRows.length)} buses por registrar.`,
-      );
-      return;
-    }
-
+    // Sin comprobación previa: el archivo del día se genera aunque falten
+    // registros, y los buses sin marca salen identificados como SIN REGISTRO.
     startExportTransition(async () => {
       const result = await exportBusWashDayCsvAction({
         record_date: date,
