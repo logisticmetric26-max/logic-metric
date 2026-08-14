@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CloudRain, Loader2, Sparkles } from "lucide-react";
+import { Check, CloudRain, FileText, Loader2, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -55,8 +56,12 @@ export function BusWashDailyActions({
   // Los terminales sobre los que se actúa son EXACTAMENTE los que la pantalla
   // está mostrando: uno si hay filtro, todos los autorizados si no. Esconder
   // los botones cuando no hay filtro dejaba la función invisible por defecto.
-  const alcance = terminalId ? [terminalId] : terminals.map((terminal) => terminal.id);
-  const alcanceLabel = terminalName ?? "todos sus terminales";
+  // Alcance ESTRICTO: sólo el terminal filtrado. Aplicar un masivo a los demás
+  // terminales a la vez es exactamente lo que no se quiere; sin filtro los
+  // botones se ven pero no se pueden pulsar, con el motivo escrito debajo.
+  const alcance = terminalId ? [terminalId] : [];
+  const alcanceLabel = terminalName ?? "—";
+  const sinTerminal = alcance.length === 0;
 
   function marcarTodos(field: "bm_completed" | "body_wash_completed", etiqueta: string) {
     if (alcance.length === 0) return;
@@ -76,6 +81,12 @@ export function BusWashDailyActions({
       );
       router.refresh();
     });
+  }
+
+  function hojaHref(tipo: "bm" | "carroceria") {
+    const parametros = new URLSearchParams({ tipo });
+    if (terminalId) parametros.set("terminal", terminalId);
+    return `/lavado-buses/pendientes?${parametros.toString()}`;
   }
 
   const bmPercent = porcentaje(progress.bmDone, progress.expected);
@@ -112,7 +123,8 @@ export function BusWashDailyActions({
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={pending}
+                  disabled={pending || sinTerminal}
+                  title={sinTerminal ? "Elija un terminal para registrar" : undefined}
                   onClick={() => marcarTodos("bm_completed", "barrido y mopeo")}
                   icon={
                     pending ? (
@@ -128,7 +140,8 @@ export function BusWashDailyActions({
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={pending}
+                  disabled={pending || sinTerminal}
+                  title={sinTerminal ? "Elija un terminal para registrar" : undefined}
                   onClick={() => marcarTodos("body_wash_completed", "lavado de carrocería")}
                   icon={
                     pending ? (
@@ -153,6 +166,28 @@ export function BusWashDailyActions({
                 </Button>
               </div>
             )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+            <span className="text-[10.5px] font-semibold tracking-[0.05em] text-ink-subtle uppercase">
+              Pendientes de ayer
+            </span>
+            <Link
+              href={hojaHref("bm")}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary transition-colors hover:bg-fill-subtle hover:text-ink"
+            >
+              <FileText className="size-3.5" aria-hidden />
+              Hoja B&M
+            </Link>
+            <Link
+              href={hojaHref("carroceria")}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary transition-colors hover:bg-fill-subtle hover:text-ink"
+            >
+              <FileText className="size-3.5" aria-hidden />
+              Hoja carrocería
+            </Link>
           </div>
 
           <p className="text-[11px] leading-snug text-ink-subtle">
