@@ -287,3 +287,148 @@ function hasAnyBusWashStatus(
 function escapeCsv(value: string) {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
+
+// =============================================================================
+// Registro masivo y día de lluvia
+// =============================================================================
+
+/**
+ * Marca B&M o lavado de carrocería para TODOS los buses del terminal en la fecha.
+ *
+ * Es la operación que se hace de verdad al cerrar el turno: casi toda la flota
+ * cumplió, y marcar cuatrocientas casillas a mano no es un flujo, es un castigo.
+ * Se marca todo de una vez y después se corrigen las excepciones.
+ *
+ * NO toca los buses marcados como «en reparación» ni «no se lava»: esas dos
+ * marcas son decisiones explícitas de alguien y un barrido masivo no debe
+ * borrarlas.
+ */
+export async function bulkMarkBusWashAction(input: {
+  date: string;
+  terminalId: string;
+  field: "bm_completed" | "body_wash_completed";
+}): Promise<ActionResult<{ updated: number }>> {
+  const context = await requireActiveUser();
+
+  if (!context.permissions.includes(PERMISSIONS.busWash.edit)) {
+    return actionError("No tiene permisos para registrar el aseo de buses.");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return actionError("La fecha no es válida.");
+
+  if (!context.terminals.some((terminal) => terminal.id === input.terminalId)) {
+    return actionError("No tiene acceso a este terminal.");
+  }
+
+  const supabase = await createClient();
+
+  const [{ data: fleet, error: fleetError }, { data: records, error: recordsError }] =
+    await Promise.all([
+      supabase
+        .from("fleet_view")
+        .select("id, terminal_id, zone")
+        .eq("terminal_id", input.terminalId)
+        .eq("active", true),
+      supabase
+        .from("bus_wash_records")
+        .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash")
+        .eq("record_date", input.date)
+        .eq("terminal_id", input.terminalId),
+    ]);
+
+  if (fleetError) return actionError(reportError("bulkMarkBusWash.fleet", fleetError));
+  if (recordsError) return actionError(reportError("bulkMarkBusWash.records", recordsError));
+
+  const existing = new Map((records ?? []).map((record) => [record.fleet_id, record]));
+
+  const payload = (fleet ?? [])
+    // REDVAN no entra en el aseo de flota, igual que en el listado
+    .filter((bus) => (bus.zone ?? "").trim().toUpperCase() !== "REDVAN")
+    .filter((bus) => {
+      const record = existing.get(bus.id);
+      return !record?.in_repair && !record?.no_wash;
+    })
+    .map((bus) => {
+      const record = existing.get(bus.id);
+      return {
+        fleet_id: bus.id,
+        terminal_id: input.terminalId,
+        record_date: input.date,
+        bm_completed: input.field === "bm_completed" ? true : (record?.bm_completed ?? false),
+        body_wash_completed:
+          input.field === "body_wash_completed" ? true : (record?.body_wash_completed ?? false),
+        in_repair: false,
+        no_wash: false,
+        updated_by: context.profile.id,
+      };
+    });
+
+  if (payload.length === 0) return actionSuccess({ updated: 0 });
+
+  const { error } = await supabase
+    .from("bus_wash_records")
+    .upsert(payload, { onConflict: "fleet_id,record_date" });
+
+  if (error) return actionError(reportError("bulkMarkBusWash.upsert", error));
+
+  revalidatePath("/lavado-buses");
+  return actionSuccess({ updated: payload.length });
+}
+
+/**
+ * Registra —o retira— la justificación de lluvia del terminal para esa fecha.
+ *
+ * No bloquea nada: llueve por la mañana, escampa por la tarde y ese día sí se
+ * lava. Sólo deja constancia de por qué el cumplimiento de carrocería fue bajo.
+ */
+export async function setBusWashRainDayAction(input: {
+  date: string;
+  terminalId: string;
+  reason: string | null;
+}): Promise<ActionResult> {
+  const context = await requireActiveUser();
+
+  if (!context.permissions.includes(PERMISSIONS.busWash.edit)) {
+    return actionError("No tiene permisos para registrar el aseo de buses.");
+  }
+
+  if (!context.terminals.some((terminal) => terminal.id === input.terminalId)) {
+    return actionError("No tiene acceso a este terminal.");
+  }
+
+  const supabase = await createClient();
+
+  if (input.reason === null) {
+    const { error } = await supabase
+      .from("bus_wash_rain_days")
+      .delete()
+      .eq("terminal_id", input.terminalId)
+      .eq("record_date", input.date);
+
+    if (error) return actionError(reportError("setRainDay.delete", error));
+    revalidatePath("/lavado-buses");
+    return actionSuccess();
+  }
+
+  const reason = input.reason.trim();
+  if (reason.length < 3) {
+    return actionError("Explique brevemente por qué no se lavó carrocería.", {
+      reason: "Escriba al menos unas palabras.",
+    });
+  }
+
+  const { error } = await supabase.from("bus_wash_rain_days").upsert(
+    {
+      terminal_id: input.terminalId,
+      record_date: input.date,
+      reason,
+      created_by: context.profile.id,
+    },
+    { onConflict: "terminal_id,record_date" },
+  );
+
+  if (error) return actionError(reportError("setRainDay.upsert", error));
+
+  revalidatePath("/lavado-buses");
+  return actionSuccess();
+}

@@ -6,8 +6,8 @@ import { ErrorState } from "@/components/ui/feedback";
 import { BusWashBoard, type BusWashListRow } from "@/features/bus-wash/bus-wash-board";
 import { reportError } from "@/lib/errors";
 import { todayInZone } from "@/lib/format";
-import { computeCompliance, type TerminalCompliance } from "@/features/bus-wash/compliance";
-import { BusWashCompliancePanel } from "@/features/bus-wash/compliance-panel";
+import { computeCompliance } from "@/features/bus-wash/compliance";
+import { BusWashDailyActions } from "@/features/bus-wash/daily-actions";
 
 export const metadata: Metadata = { title: "Lavado Buses" };
 
@@ -47,8 +47,8 @@ export default async function LavadoBusesPage({
   let rows: BusWashListRow[];
   let existingRecordCount = 0;
   let existingZones: string[] = [];
-  let compliance: TerminalCompliance[] = [];
-  let targetPercent = 90;
+  let progress = { bmDone: 0, bodyDone: 0, expected: 0 };
+  let rainReason: string | null = null;
 
   try {
     const [
@@ -129,27 +129,24 @@ export default async function LavadoBusesPage({
 
     existingZones = [...new Set(rows.filter(hasAnyStatus).map((row) => normalizeZoneLabel(row.zone)))].sort();
 
-    // Meta y justificaciones de lluvia: dos lecturas pequeñas que no bloquean
-    // el listado y se piden a la vez.
-    const [{ data: target }, { data: rainDays }] = await Promise.all([
-      supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "bus_wash.daily_target_percent")
-        .maybeSingle(),
-      withTerminal(
-        supabase.from("bus_wash_rain_days").select("terminal_id, reason").eq("record_date", date),
-        terminalId,
-      ),
-    ]);
+    const { data: rainDays } = await withTerminal(
+      supabase.from("bus_wash_rain_days").select("terminal_id, reason").eq("record_date", date),
+      terminalId,
+    );
 
-    const parsedTarget = Number(target?.value ?? 90);
-    targetPercent = Number.isFinite(parsedTarget) ? parsedTarget : 90;
+    rainReason = terminalId
+      ? ((rainDays ?? []).find((day) => day.terminal_id === terminalId)?.reason ?? null)
+      : null;
 
-    compliance = computeCompliance(rows, {
-      targetPercent,
-      rainReasons: new Map((rainDays ?? []).map((day) => [day.terminal_id, day.reason])),
-    });
+    // Avance del día. Los buses en reparación y los «no se lava» salen de la
+    // cuenta: no estaban disponibles, y exigirlos castigaría al turno por algo
+    // que no dependía de él.
+    const [terminalCompliance] = computeCompliance(rows);
+    progress = {
+      bmDone: terminalCompliance?.bm.done ?? 0,
+      bodyDone: terminalCompliance?.bodyWash.done ?? 0,
+      expected: terminalCompliance?.bm.expected ?? 0,
+    };
   } catch (error) {
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
@@ -157,10 +154,14 @@ export default async function LavadoBusesPage({
 
   return (
     <>
-      <BusWashCompliancePanel
+      <BusWashDailyActions
+        date={date}
+        terminalId={terminalId}
+        terminalName={terminalOptions.find((terminal) => terminal.id === terminalId)?.name ?? null}
+        canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
+        rainReason={rainReason}
+        progress={progress}
         terminals={terminalOptions}
-        compliance={compliance}
-        targetPercent={targetPercent}
       />
       <BusWashBoard
       initialRows={rows}
