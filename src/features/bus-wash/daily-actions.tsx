@@ -89,7 +89,7 @@ export function BusWashDailyActions({
   function hojaHref(tipo: "bm" | "carroceria") {
     const parametros = new URLSearchParams({ tipo });
     if (terminalId) parametros.set("terminal", terminalId);
-    return `/lavado-buses/pendientes?${parametros.toString()}`;
+    return `/api/lavado/pendientes?${parametros.toString()}`;
   }
 
   // `search` se recibe para que el componente se vuelva a renderizar cuando
@@ -189,19 +189,20 @@ export function BusWashDailyActions({
             </span>
             <Link
               href={hojaHref("bm")}
-              target="_blank"
+              // Descarga directa del archivo, no una vista para imprimir
+              download
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary transition-colors hover:bg-fill-subtle hover:text-ink"
             >
               <FileText className="size-3.5" aria-hidden />
-              Hoja B&M
+              PDF pendientes B&M
             </Link>
             <Link
               href={hojaHref("carroceria")}
-              target="_blank"
+              download
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary transition-colors hover:bg-fill-subtle hover:text-ink"
             >
               <FileText className="size-3.5" aria-hidden />
-              Hoja carrocería
+              PDF pendientes carrocería
             </Link>
           </div>
 
