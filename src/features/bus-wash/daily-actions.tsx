@@ -52,11 +52,17 @@ export function BusWashDailyActions({
   const [pending, startTransition] = useTransition();
   const [rainOpen, setRainOpen] = useState(false);
 
+  // Los terminales sobre los que se actúa son EXACTAMENTE los que la pantalla
+  // está mostrando: uno si hay filtro, todos los autorizados si no. Esconder
+  // los botones cuando no hay filtro dejaba la función invisible por defecto.
+  const alcance = terminalId ? [terminalId] : terminals.map((terminal) => terminal.id);
+  const alcanceLabel = terminalName ?? "todos sus terminales";
+
   function marcarTodos(field: "bm_completed" | "body_wash_completed", etiqueta: string) {
-    if (!terminalId) return;
+    if (alcance.length === 0) return;
 
     startTransition(async () => {
-      const result = await bulkMarkBusWashAction({ date, terminalId, field });
+      const result = await bulkMarkBusWashAction({ date, terminalIds: alcance, field });
 
       if (!result.ok) {
         toast.error(result.error);
@@ -99,8 +105,6 @@ export function BusWashDailyActions({
 
           {canEdit && (
             <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-center">
-              {terminalId ? (
-                <>
                   <Button
                     size="sm"
                     variant="secondary"
@@ -136,7 +140,10 @@ export function BusWashDailyActions({
                   <Button
                     size="sm"
                     variant={rainReason ? "subtle" : "ghost"}
-                    disabled={pending}
+                    // La lluvia se justifica POR terminal: con «todos» no se
+                    // sabría a cuál atribuirla.
+                    disabled={pending || !terminalId}
+                    title={terminalId ? undefined : "Elija un terminal para justificar la lluvia"}
                     onClick={() => setRainOpen(true)}
                     icon={<CloudRain className="size-4" aria-hidden />}
                   >
@@ -144,16 +151,9 @@ export function BusWashDailyActions({
                   </Button>
 
                   <p className="text-[11.5px] text-ink-muted sm:ml-auto">
-                    Se aplica a <strong className="font-medium text-ink-secondary">{terminalName}</strong>.
+                    Se aplica a <strong className="font-medium text-ink-secondary">{alcanceLabel}</strong>.
                     No toca los buses en reparación ni los marcados «no se lava».
                   </p>
-                </>
-              ) : (
-                <p className="text-[12px] text-ink-muted">
-                  Elija un terminal arriba para registrar de forma masiva. Un registro sobre todos
-                  los terminales a la vez es difícil de deshacer.
-                </p>
-              )}
             </div>
           )}
 

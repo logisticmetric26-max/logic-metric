@@ -305,7 +305,8 @@ function escapeCsv(value: string) {
  */
 export async function bulkMarkBusWashAction(input: {
   date: string;
-  terminalId: string;
+  /** Terminales sobre los que aplicar. Son los que la pantalla está mostrando. */
+  terminalIds: string[];
   field: "bm_completed" | "body_wash_completed";
 }): Promise<ActionResult<{ updated: number }>> {
   const context = await requireActiveUser();
@@ -316,8 +317,11 @@ export async function bulkMarkBusWashAction(input: {
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return actionError("La fecha no es válida.");
 
-  if (!context.terminals.some((terminal) => terminal.id === input.terminalId)) {
-    return actionError("No tiene acceso a este terminal.");
+  const authorized = new Set(context.terminals.map((terminal) => terminal.id));
+  const terminalIds = input.terminalIds.filter((id) => authorized.has(id));
+
+  if (terminalIds.length === 0) {
+    return actionError("No tiene acceso a los terminales indicados.");
   }
 
   const supabase = await createClient();
@@ -327,13 +331,13 @@ export async function bulkMarkBusWashAction(input: {
       supabase
         .from("fleet_view")
         .select("id, terminal_id, zone")
-        .eq("terminal_id", input.terminalId)
+        .in("terminal_id", terminalIds)
         .eq("active", true),
       supabase
         .from("bus_wash_records")
         .select("fleet_id, bm_completed, body_wash_completed, in_repair, no_wash")
         .eq("record_date", input.date)
-        .eq("terminal_id", input.terminalId),
+        .in("terminal_id", terminalIds),
     ]);
 
   if (fleetError) return actionError(reportError("bulkMarkBusWash.fleet", fleetError));
@@ -352,7 +356,7 @@ export async function bulkMarkBusWashAction(input: {
       const record = existing.get(bus.id);
       return {
         fleet_id: bus.id,
-        terminal_id: input.terminalId,
+        terminal_id: bus.terminal_id,
         record_date: input.date,
         bm_completed: input.field === "bm_completed" ? true : (record?.bm_completed ?? false),
         body_wash_completed:

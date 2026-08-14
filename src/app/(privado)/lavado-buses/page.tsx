@@ -6,8 +6,10 @@ import { ErrorState } from "@/components/ui/feedback";
 import { BusWashBoard, type BusWashListRow } from "@/features/bus-wash/bus-wash-board";
 import { reportError } from "@/lib/errors";
 import { todayInZone } from "@/lib/format";
-import { computeCompliance } from "@/features/bus-wash/compliance";
+import { computeCompliance, totalCompliance } from "@/features/bus-wash/compliance";
 import { BusWashDailyActions } from "@/features/bus-wash/daily-actions";
+import { fetchWeekWeather } from "@/features/bus-wash/weather";
+import { BusWashWeatherCard } from "@/features/bus-wash/weather-card";
 
 export const metadata: Metadata = { title: "Lavado Buses" };
 
@@ -44,6 +46,10 @@ export default async function LavadoBusesPage({
   const terminalId = requestedTerminal ?? (terminalOptions.length === 1 ? terminalOptions[0].id : null);
 
   const supabase = await createClient();
+
+  // El pronóstico va aparte del try de los datos: si el servicio no responde,
+  // la tarjeta desaparece pero el registro del día sigue funcionando.
+  const weather = await fetchWeekWeather();
   let rows: BusWashListRow[];
   let existingRecordCount = 0;
   let existingZones: string[] = [];
@@ -141,11 +147,14 @@ export default async function LavadoBusesPage({
     // Avance del día. Los buses en reparación y los «no se lava» salen de la
     // cuenta: no estaban disponibles, y exigirlos castigaría al turno por algo
     // que no dependía de él.
-    const [terminalCompliance] = computeCompliance(rows);
+    // Se consolidan TODOS los terminales mostrados. Tomar sólo el primero hacía
+    // que con «todos mis terminales» la cifra dijera «0 de 139» teniendo 931
+    // buses en pantalla.
+    const consolidado = totalCompliance(computeCompliance(rows));
     progress = {
-      bmDone: terminalCompliance?.bm.done ?? 0,
-      bodyDone: terminalCompliance?.bodyWash.done ?? 0,
-      expected: terminalCompliance?.bm.expected ?? 0,
+      bmDone: consolidado.bm.done,
+      bodyDone: consolidado.bodyWash.done,
+      expected: consolidado.bm.expected,
     };
   } catch (error) {
     reportError("busWashPage", error);
@@ -154,6 +163,10 @@ export default async function LavadoBusesPage({
 
   return (
     <>
+      {weather && weather.length > 0 && (
+        <BusWashWeatherCard days={weather} today={todayInZone()} />
+      )}
+
       <BusWashDailyActions
         date={date}
         terminalId={terminalId}
