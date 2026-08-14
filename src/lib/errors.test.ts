@@ -48,6 +48,35 @@ describe("toUserMessage", () => {
     ).toBe("Ya existe un usuario registrado con ese RUT.");
   });
 
+  it("traduce las dependencias que bloquean la eliminacion de un terminal", () => {
+    const cases: [string, string][] = [
+      [
+        'update or delete on table "terminals" violates foreign key constraint "fleet_terminal_id_fkey" on table "fleet"',
+        "No se puede eliminar el terminal porque tiene buses asociados.",
+      ],
+      [
+        'update or delete on table "terminals" violates foreign key constraint "technical_review_events_terminal_id_fkey" on table "technical_review_events"',
+        "No se puede eliminar el terminal porque tiene revisiones técnicas asociadas.",
+      ],
+      [
+        'update or delete on table "terminals" violates foreign key constraint "bus_wash_records_terminal_id_fkey" on table "bus_wash_records"',
+        "No se puede eliminar el terminal porque tiene registros de lavado de buses asociados.",
+      ],
+      [
+        'update or delete on table "terminals" violates foreign key constraint "fuel_delivery_schedules_terminal_id_fkey" on table "fuel_delivery_schedules"',
+        "No se puede eliminar el terminal porque tiene llegadas de combustible asociadas.",
+      ],
+      [
+        'update or delete on table "terminals" violates foreign key constraint "bad_fuel_loads_terminal_id_fkey" on table "bad_fuel_loads"',
+        "No se puede eliminar el terminal porque tiene malas cargas de combustible asociadas.",
+      ],
+    ];
+
+    for (const [raw, message] of cases) {
+      expect(toUserMessage(new Error(raw))).toBe(message);
+    }
+  });
+
   it("traduce un rechazo de RLS como falta de acceso al terminal", () => {
     expect(
       toUserMessage(new Error('new row violates row-level security policy for table "fleet"')),

@@ -131,55 +131,28 @@ export async function deleteTerminalAction(id: string): Promise<ActionResult> {
 
   const supabase = await createClient();
 
-  const [
-    { count: fleetCount, error: fleetError },
-    { count: profilesCount, error: profilesError },
-    { count: reviewsCount, error: reviewsError },
-    { count: notSentCount, error: notSentError },
-  ] = await Promise.all([
-    supabase.from("fleet").select("id", { count: "exact", head: true }).eq("terminal_id", id),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("primary_terminal_id", id),
-    supabase
-      .from("technical_review_events")
-      .select("id", { count: "exact", head: true })
-      .eq("terminal_id", id),
-    supabase
-      .from("technical_review_not_sent")
-      .select("id", { count: "exact", head: true })
-      .eq("terminal_id", id),
-  ]);
-
-  if (fleetError) return actionError(reportError("deleteTerminalFleetCheck", fleetError));
-  if (profilesError) return actionError(reportError("deleteTerminalProfilesCheck", profilesError));
-  if (reviewsError) return actionError(reportError("deleteTerminalReviewsCheck", reviewsError));
-  if (notSentError) return actionError(reportError("deleteTerminalNotSentCheck", notSentError));
-
-  if ((fleetCount ?? 0) > 0) {
-    return actionError("No se puede eliminar el terminal porque tiene buses asociados.");
-  }
-
-  if ((profilesCount ?? 0) > 0) {
-    return actionError(
-      "No se puede eliminar el terminal porque tiene usuarios con terminal principal asignado.",
-    );
-  }
-
-  if ((reviewsCount ?? 0) > 0) {
-    return actionError("No se puede eliminar el terminal porque tiene revisiones técnicas asociadas.");
-  }
-
-  if ((notSentCount ?? 0) > 0) {
-    return actionError(
-      "No se puede eliminar el terminal porque tiene registros de no enviados asociados.",
-    );
-  }
-
-  const { error } = await supabase.from("terminals").delete().eq("id", id);
+  /**
+   * Se intenta borrar directamente y se deja que la base rechace cualquier
+   * dependencia operativa real.
+   *
+   * El terminal ya no sólo se relaciona con flota, usuarios y revisiones:
+   * ahora también puede tener agenda de combustible, registros de lavado o
+   * malas cargas. Replicar cada chequeo previo con el cliente de sesión vuelve
+   * frágil esta acción y la obliga a tener permisos de lectura sobre módulos
+   * que no participan en la eliminación.
+   *
+   * PostgreSQL sigue siendo la fuente de verdad: si una FK impide borrar el
+   * terminal, `toUserMessage()` traduce esa restricción al motivo correcto.
+   */
+  const { data, error } = await supabase
+    .from("terminals")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return actionError(reportError("deleteTerminal", error));
+  if (!data) return actionError("El terminal indicado no existe o no está disponible.");
 
   revalidatePath("/configuracion/terminales");
   revalidatePath("/configuracion/flota");

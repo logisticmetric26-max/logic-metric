@@ -94,6 +94,31 @@ const CONSTRAINT_MESSAGES: Array<[RegExp, string]> = [
   [/trns_work_order_check/, "El número de OT ingresado no tiene un formato válido."],
   [/trd_size_check/, "El archivo excede el tamaño máximo permitido."],
   [/trd_mime_check/, "Sólo se aceptan archivos PDF."],
+  [/fleet_terminal_id_fkey/, "No se puede eliminar el terminal porque tiene buses asociados."],
+  [
+    /profiles_primary_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene usuarios con terminal principal asignado.",
+  ],
+  [
+    /technical_review_events_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene revisiones técnicas asociadas.",
+  ],
+  [
+    /technical_review_not_sent_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene registros de no enviados asociados.",
+  ],
+  [
+    /bus_wash_records_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene registros de lavado de buses asociados.",
+  ],
+  [
+    /fuel_delivery_schedules_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene llegadas de combustible asociadas.",
+  ],
+  [
+    /bad_fuel_loads_terminal_id_fkey/,
+    "No se puede eliminar el terminal porque tiene malas cargas de combustible asociadas.",
+  ],
   [/row-level security|violates row-level security/i, "No tiene acceso a este terminal."],
   [/permission denied/i, "No tiene permisos para realizar esta acción."],
 ];

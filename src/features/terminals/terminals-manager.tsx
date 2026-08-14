@@ -224,7 +224,8 @@ export function TerminalsManager({ terminals, canCreate, canEdit, canDelete }: P
         message={
           <p>
             El terminal <strong>{deleting?.name}</strong> se eliminará de forma definitiva. Si
-            tiene buses, revisiones o usuarios asociados, la operación será rechazada.
+            tiene buses, usuarios, revisiones, registros de lavado o movimientos de combustible
+            asociados, la operación será rechazada.
           </p>
         }
       />
