@@ -28,6 +28,18 @@ export function escapeLikePattern(value: string): string {
   return value.replace(/[%_\\]/g, (match) => `\\${match}`);
 }
 
+const TIME_TEXT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+export function normalizeTimeText(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+export function isValidTimeText(value: string): boolean {
+  return TIME_TEXT_PATTERN.test(value.trim());
+}
+
 /** Lee un entero de los parámetros de URL con límites seguros. */
 export function parsePageParam(value: string | undefined, fallback = 1): number {
   const parsed = Number.parseInt(value ?? "", 10);

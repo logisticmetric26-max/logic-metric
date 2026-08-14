@@ -44,7 +44,7 @@ export default async function RevisionTecnicaLayout({
     });
     tabs.push({
       href: "/revision-tecnica/en-revision",
-      label: "Enviar a planta",
+      label: "Envios a planta",
       icon: <Timer className="size-4" aria-hidden />,
     });
   }

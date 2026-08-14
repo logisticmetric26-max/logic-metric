@@ -6,7 +6,8 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/modal";
 import { Input } from "@/components/ui/field";
-import { cn } from "@/lib/utils";
+import { TimeTextInput } from "@/components/ui/time-input";
+import { cn, isValidTimeText } from "@/lib/utils";
 
 /**
  * Filtros y búsqueda sincronizados con la URL (§65, §66).
@@ -153,6 +154,50 @@ export function FilterDate({
         value={value}
         onChange={(event) => setParams({ [paramName]: event.target.value || null })}
         className="h-10 w-full rounded-md bg-surface px-3 text-base text-ink ring-1 ring-inset ring-ring transition-shadow hover:ring-border-strong focus:ring-2 focus:ring-brand-500 focus:outline-none sm:text-[13px]"
+      />
+    </label>
+  );
+}
+
+export function FilterTime({
+  paramName,
+  label,
+  className,
+}: {
+  paramName: string;
+  label: string;
+  className?: string;
+}) {
+  const { searchParams, setParams } = useUrlState();
+  const urlValue = searchParams.get(paramName) ?? "";
+  const [value, setValue] = useState(urlValue);
+  const [lastUrlValue, setLastUrlValue] = useState(urlValue);
+
+  if (urlValue !== lastUrlValue) {
+    setLastUrlValue(urlValue);
+    setValue(urlValue);
+  }
+
+  function onChange(next: string) {
+    setValue(next);
+
+    if (next === "") {
+      setParams({ [paramName]: null });
+      return;
+    }
+
+    if (isValidTimeText(next)) {
+      setParams({ [paramName]: next });
+    }
+  }
+
+  return (
+    <label className={cn("flex flex-col gap-1.5", className)}>
+      <span className="text-[11px] font-medium text-ink-muted">{label}</span>
+      <TimeTextInput
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={label}
       />
     </label>
   );

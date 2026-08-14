@@ -15,11 +15,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/feedback";
-import { FilterBar, FilterDate, FilterSelect, SearchField } from "@/components/ui/filters";
+import { FilterBar, FilterDate, FilterSelect, FilterTime, SearchField } from "@/components/ui/filters";
 import { Field, Input, Select } from "@/components/ui/field";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { CardList, ResponsiveTable, RowCard } from "@/components/ui/table";
+import { TimeTextInput } from "@/components/ui/time-input";
 import { useToast } from "@/components/ui/toast";
 import {
   createBadFuelLoadAction,
@@ -27,16 +28,10 @@ import {
   exportBadFuelLoadsCsvAction,
   updateBadFuelLoadAction,
 } from "@/features/bad-loads/actions";
+import type { BadLoadTodaySummary, DispenserOption } from "@/features/bad-loads/types";
+import { formatDispenserOptionLabel } from "@/features/bad-loads/utils";
 import { formatDateOnly, formatPpu } from "@/lib/format";
 import type { BadFuelLoadViewRow } from "@/types/database.types";
-
-interface DispenserOption {
-  id: string;
-  code: string;
-  terminal_name: string;
-  terminal_code: string;
-  active: boolean;
-}
 
 interface Props {
   items: BadFuelLoadViewRow[];
@@ -49,10 +44,15 @@ interface Props {
   canDelete: boolean;
   activeFilterCount: number;
   mode: "active" | "history";
+  todayDate: string;
+  todayTotalLiters: number;
+  todayTotalsByDispenser: BadLoadTodaySummary[];
   exportFilters: {
     q?: string;
     desde?: string;
     hasta?: string;
+    hora_desde?: string;
+    hora_hasta?: string;
     surtidor?: string;
   };
 }
@@ -68,6 +68,9 @@ export function BadLoadsManager({
   canDelete,
   activeFilterCount,
   mode,
+  todayDate,
+  todayTotalLiters,
+  todayTotalsByDispenser,
   exportFilters,
 }: Props) {
   const toast = useToast();
@@ -143,15 +146,64 @@ export function BadLoadsManager({
         >
           <FilterDate paramName="desde" label="Desde" />
           <FilterDate paramName="hasta" label="Hasta" />
+          <FilterTime paramName="hora_desde" label="Hora inicio" />
+          <FilterTime paramName="hora_hasta" label="Hora cierre" />
           <FilterSelect
             paramName="surtidor"
             label="Surtidor"
             options={dispensers.map((dispenser) => ({
               value: dispenser.id,
-              label: `${dispenser.code} | ${dispenser.terminal_code}`,
+              label: formatDispenserOptionLabel(dispenser),
             }))}
           />
         </FilterBar>
+
+        {mode === "active" && (
+          <div className="border-b border-border px-4 py-4 sm:px-5">
+            <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
+              <div className="rounded-2xl border border-brand-100 bg-brand-50/70 px-4 py-4">
+                <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-brand-700">
+                  Total del dia
+                </p>
+                <p className="mt-2 text-[30px] leading-none font-semibold tracking-[-0.04em] text-ink">
+                  {formatLiters(todayTotalLiters)}
+                </p>
+                <p className="mt-2 text-[12px] text-ink-muted">
+                  {todayDate ? `Registros del ${formatDateOnly(todayDate)}.` : "Sin fecha de referencia."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-surface-subtle/60 px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[13px] font-medium text-ink">Litros por surtidor hoy</p>
+                  <span className="text-[11px] text-ink-muted">
+                    {todayTotalsByDispenser.length} surtidor{todayTotalsByDispenser.length === 1 ? "" : "es"} con registro
+                  </span>
+                </div>
+
+                {todayTotalsByDispenser.length === 0 ? (
+                  <p className="mt-3 text-[12px] text-ink-muted">
+                    No hay malas cargas registradas hoy en sus terminales.
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {todayTotalsByDispenser.map((summary) => (
+                      <div
+                        key={summary.dispenser_id}
+                        className="rounded-full border border-border bg-surface px-3 py-2 text-[12px] text-ink"
+                      >
+                        <span className="font-medium">
+                          {summary.dispenser_code} | {summary.terminal_code || summary.terminal_name}
+                        </span>
+                        <span className="ml-2 text-ink-muted">{formatLiters(summary.liters)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {items.length === 0 ? (
           <EmptyState
@@ -446,9 +498,8 @@ function BadLoadFormModal({
         </Field>
 
         <Field label="Hora" required error={fieldErrors.load_time} htmlFor="bad-load-time">
-          <Input
+          <TimeTextInput
             id="bad-load-time"
-            type="time"
             name="load_time"
             defaultValue={item ? item.load_time.slice(0, 5) : ""}
             required
@@ -489,7 +540,7 @@ function BadLoadFormModal({
             </option>
             {dispenserOptions.map((dispenser) => (
               <option key={dispenser.id} value={dispenser.id}>
-                {dispenser.code} | {dispenser.terminal_code}
+                {formatDispenserOptionLabel(dispenser)}
                 {dispenser.active ? "" : " (inactivo)"}
               </option>
             ))}

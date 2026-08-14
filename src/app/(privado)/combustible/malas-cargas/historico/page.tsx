@@ -5,7 +5,8 @@ import { requirePermission } from "@/lib/auth/session";
 import { reportError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { BadLoadsManager } from "@/features/bad-loads/bad-loads-manager";
-import { escapeLikePattern, parsePageParam } from "@/lib/utils";
+import { filterDispensersByTerminalAccess } from "@/features/bad-loads/utils";
+import { escapeLikePattern, isValidTimeText, parsePageParam } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Historico de malas cargas" };
 
@@ -16,6 +17,8 @@ interface SearchParams {
   q?: string;
   desde?: string;
   hasta?: string;
+  hora_desde?: string;
+  hora_hasta?: string;
   surtidor?: string;
   pagina?: string;
 }
@@ -25,7 +28,7 @@ export default async function HistoricoMalasCargasPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requirePermission(PERMISSIONS.badLoads.view);
+  const context = await requirePermission(PERMISSIONS.badLoads.view);
   const params = await searchParams;
 
   const page = parsePageParam(params.pagina);
@@ -52,6 +55,12 @@ export default async function HistoricoMalasCargasPage({
 
   if (params.desde && DATE_PATTERN.test(params.desde)) query = query.gte("load_date", params.desde);
   if (params.hasta && DATE_PATTERN.test(params.hasta)) query = query.lte("load_date", params.hasta);
+  if (params.hora_desde && isValidTimeText(params.hora_desde)) {
+    query = query.gte("load_time", params.hora_desde);
+  }
+  if (params.hora_hasta && isValidTimeText(params.hora_hasta)) {
+    query = query.lte("load_time", params.hora_hasta);
+  }
   if (params.surtidor) query = query.eq("dispenser_id", params.surtidor);
 
   const [{ data: items, count, error }, { data: dispensers, error: dispenserError }] =
@@ -68,9 +77,15 @@ export default async function HistoricoMalasCargasPage({
     return <ErrorState description="No fue posible obtener el historico de malas cargas." />;
   }
 
-  const activeFilterCount = [params.q, params.desde, params.hasta, params.surtidor].filter(
-    Boolean,
-  ).length;
+  const accessibleDispensers = filterDispensersByTerminalAccess(dispensers ?? [], context);
+  const activeFilterCount = [
+    params.q,
+    params.desde,
+    params.hasta,
+    params.hora_desde,
+    params.hora_hasta,
+    params.surtidor,
+  ].filter(Boolean).length;
 
   return (
     <BadLoadsManager
@@ -78,12 +93,15 @@ export default async function HistoricoMalasCargasPage({
       total={count ?? 0}
       page={page}
       pageSize={PAGE_SIZE}
-      dispensers={dispensers ?? []}
+      dispensers={accessibleDispensers}
       canCreate={false}
       canEdit={false}
       canDelete={false}
       activeFilterCount={activeFilterCount}
       mode="history"
+      todayDate=""
+      todayTotalLiters={0}
+      todayTotalsByDispenser={[]}
       exportFilters={{}}
     />
   );

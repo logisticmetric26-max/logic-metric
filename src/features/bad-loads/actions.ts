@@ -5,7 +5,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requireActiveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, actionSuccess, reportError, type ActionResult } from "@/lib/errors";
-import { escapeLikePattern } from "@/lib/utils";
+import { escapeLikePattern, isValidTimeText } from "@/lib/utils";
 import { toFieldErrors } from "@/schemas/common";
 import {
   badFuelLoadExportSchema,
@@ -212,6 +212,12 @@ export async function exportBadFuelLoadsCsvAction(
   }
   if (parsed.data.hasta && DATE_PATTERN.test(parsed.data.hasta)) {
     query = query.lte("load_date", parsed.data.hasta);
+  }
+  if (parsed.data.hora_desde && isValidTimeText(parsed.data.hora_desde)) {
+    query = query.gte("load_time", parsed.data.hora_desde);
+  }
+  if (parsed.data.hora_hasta && isValidTimeText(parsed.data.hora_hasta)) {
+    query = query.lte("load_time", parsed.data.hora_hasta);
   }
   if (parsed.data.surtidor) {
     query = query.eq("dispenser_id", parsed.data.surtidor);

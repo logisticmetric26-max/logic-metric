@@ -4,23 +4,16 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
-import { Modal } from "@/components/ui/modal";
 import { Alert } from "@/components/ui/feedback";
+import { Modal } from "@/components/ui/modal";
+import { TimeTextInput } from "@/components/ui/time-input";
 import { useToast } from "@/components/ui/toast";
-import { BusSearch } from "@/features/technical-reviews/bus-search";
 import { openReviewAction } from "@/features/technical-reviews/actions";
+import { BusSearch } from "@/features/technical-reviews/bus-search";
 import { hasNameAndSurname } from "@/lib/person-name";
+import { isValidTimeText } from "@/lib/utils";
 import type { FleetViewRow } from "@/types/database.types";
 
-/**
- * §18 · Registro de salida a planta.
- *
- * Sólo se pide bus, conductor y momento de salida. NO se pide resultado: el
- * proceso queda abierto hasta que el bus regrese (§18, §20).
- *
- * Si el bus ya tiene un proceso abierto, la base lo rechaza y aquí se muestra
- * el mensaje correspondiente (§19).
- */
 export function RegisterDepartureModal({
   open,
   onClose,
@@ -34,34 +27,51 @@ export function RegisterDepartureModal({
 
   const [bus, setBus] = useState<FleetViewRow | null>(null);
   const [driverName, setDriverName] = useState("");
-  // Sin estado inicial ni efecto que lo reponga: mientras nadie toque el campo,
-  // el valor se DERIVA del reloj en cada render. Así la hora que se ve es la de
-  // ahora —no la de cuando se abrió el modal— y no hay que sincronizar nada.
-  const [departureAt, setDepartureAt] = useState("");
+  const [departureDate, setDepartureDate] = useState("");
+  const [departureTime, setDepartureTime] = useState("");
   const [departureTouched, setDepartureTouched] = useState(false);
-  const departureValue = departureTouched ? departureAt : nowForInput();
+  const liveNow = nowForInputParts();
+  const departureDateValue = departureTouched ? departureDate : liveNow.date;
+  const departureTimeValue = departureTouched ? departureTime : liveNow.time;
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
-
 
   function reset() {
     setBus(null);
     setDriverName("");
-    setDepartureAt("");
+    setDepartureDate("");
+    setDepartureTime("");
+    setDepartureTouched(false);
     setFieldErrors({});
     setFormError(null);
+  }
+
+  function ensureDepartureDraft() {
+    if (departureTouched) return null;
+
+    const current = nowForInputParts();
+    setDepartureTouched(true);
+    setDepartureDate(current.date);
+    setDepartureTime(current.time);
+    return current;
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
 
+    const selectedDate = departureTouched ? departureDate : liveNow.date;
+    const selectedTime = departureTouched ? departureTime : liveNow.time;
     const errors: Record<string, string> = {};
+
     if (!bus) errors.fleet_id = "Debe seleccionar el bus.";
     if (driverName.trim() === "") {
       errors.driver_name = "Debe ingresar el nombre del conductor.";
     } else if (!hasNameAndSurname(driverName)) {
       errors.driver_name = "Ingrese el nombre y el apellido del conductor.";
+    }
+    if (!selectedDate || !isValidTimeText(selectedTime)) {
+      errors.departure_at = "Debe ingresar una fecha y una hora validas.";
     }
 
     setFieldErrors(errors);
@@ -70,8 +80,7 @@ export function RegisterDepartureModal({
     const formData = new FormData();
     formData.set("fleet_id", bus!.id);
     formData.set("driver_name", driverName);
-    // Vacío = momento del registro
-    formData.set("departure_at", departureValue ? new Date(departureValue).toISOString() : "");
+    formData.set("departure_at", buildDepartureIso(selectedDate, selectedTime));
 
     startTransition(async () => {
       const result = await openReviewAction(formData);
@@ -98,7 +107,7 @@ export function RegisterDepartureModal({
       }}
       busy={pending}
       title="Registrar salida a planta"
-      description="El proceso quedará abierto hasta que el bus regrese."
+      description="El proceso quedara abierto hasta que el bus regrese."
       footer={
         <>
           <Button
@@ -123,7 +132,7 @@ export function RegisterDepartureModal({
         <Field
           label="Bus"
           required
-          hint="Busque por PPU o número interno. Los datos se toman de la flota."
+          hint="Busque por PPU o numero interno. Los datos se toman de la flota."
           error={fieldErrors.fleet_id}
         >
           <BusSearch
@@ -145,7 +154,7 @@ export function RegisterDepartureModal({
             id="driver-name"
             value={driverName}
             onChange={(event) => setDriverName(event.target.value)}
-            placeholder="Juan Pérez"
+            placeholder="Juan Perez"
             maxLength={160}
             autoComplete="off"
             autoCapitalize="words"
@@ -156,42 +165,54 @@ export function RegisterDepartureModal({
 
         <Field
           label="Fecha y hora de salida"
-          hint="Viene puesta la hora actual. Modifíquela sólo si la salida fue antes."
+          hint="Viene puesta la hora actual. Modifiquela solo si la salida fue antes."
           error={fieldErrors.departure_at}
-          htmlFor="departure-at"
+          htmlFor="departure-date"
         >
-          <Input
-            id="departure-at"
-            type="datetime-local"
-            value={departureValue}
-            onChange={(event) => {
-              setDepartureTouched(true);
-              setDepartureAt(event.target.value);
-            }}
-            disabled={pending}
-            invalid={Boolean(fieldErrors.departure_at)}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              id="departure-date"
+              type="date"
+              value={departureDateValue}
+              onChange={(event) => {
+                const current = ensureDepartureDraft();
+                setDepartureDate(event.target.value);
+                if (current) setDepartureTime(current.time);
+              }}
+              disabled={pending}
+              invalid={Boolean(fieldErrors.departure_at)}
+            />
+            <TimeTextInput
+              id="departure-time"
+              value={departureTimeValue}
+              onChange={(event) => {
+                const current = ensureDepartureDraft();
+                setDepartureTime(event.target.value);
+                if (current) setDepartureDate(current.date);
+              }}
+              disabled={pending}
+              invalid={Boolean(fieldErrors.departure_at)}
+            />
+          </div>
         </Field>
       </form>
     </Modal>
   );
 }
 
-/**
- * Momento actual con el formato que espera `datetime-local`: `yyyy-MM-ddTHH:mm`.
- *
- * El campo venía vacío y se registraba la hora del servidor al enviar. Funciona,
- * pero obliga a confiar a ciegas: ahora se ve la hora que va a quedar grabada, y
- * en el caso normal —registrar la salida en el momento— no hay que escribir
- * nada. Se construye con las partes locales de la fecha, no con `toISOString`,
- * que devuelve UTC y mostraría una hora distinta a la del reloj de la pared.
- */
-function nowForInput(): string {
-  const ahora = new Date();
-  const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
+function nowForInputParts() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
 
-  return (
-    `${ahora.getFullYear()}-${dosDigitos(ahora.getMonth() + 1)}-${dosDigitos(ahora.getDate())}` +
-    `T${dosDigitos(ahora.getHours())}:${dosDigitos(ahora.getMinutes())}`
-  );
+  return {
+    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+  };
+}
+
+function buildDepartureIso(date: string, time: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+
+  return new Date(year, month - 1, day, hours, minutes).toISOString();
 }

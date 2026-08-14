@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { BusFront, Clock3, MapPin, Plus, Timer, UserCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/feedback";
 import { FilterBar, FilterDate, FilterSelect, SearchField } from "@/components/ui/filters";
 import { Pagination } from "@/components/ui/pagination";
@@ -12,6 +13,8 @@ import {
   ResponsiveTable,
   RowCard,
 } from "@/components/ui/table";
+import { useToast } from "@/components/ui/toast";
+import { cancelOpenReviewAction } from "@/features/technical-reviews/actions";
 import { formatDateTime } from "@/lib/format";
 import { ElapsedTime } from "@/features/technical-reviews/elapsed-time";
 import {
@@ -34,6 +37,7 @@ export function OpenReviews({
   terminals,
   canCreate,
   canClose,
+  canDelete,
   activeFilterCount,
 }: {
   events: (CloseReviewEvent & {
@@ -45,10 +49,31 @@ export function OpenReviews({
   terminals: { id: string; name: string }[];
   canCreate: boolean;
   canClose: boolean;
+  canDelete: boolean;
   activeFilterCount: number;
 }) {
+  const toast = useToast();
   const [closing, setClosing] = useState<CloseReviewEvent | null>(null);
   const [registering, setRegistering] = useState(false);
+  const [deleting, setDeleting] = useState<CloseReviewEvent | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function confirmDelete() {
+    if (!deleting) return;
+    const target = deleting;
+
+    startTransition(async () => {
+      const result = await cancelOpenReviewAction(target.id);
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Envio a planta anulado correctamente.");
+      setDeleting(null);
+    });
+  }
 
   return (
     <>
@@ -152,10 +177,19 @@ export function OpenReviews({
                         },
                       ]}
                       actions={
-                        canClose ? (
-                          <Button size="sm" onClick={() => setClosing(event)}>
-                            Cerrar
-                          </Button>
+                        canClose || canDelete ? (
+                          <div className="flex items-center gap-2">
+                            {canDelete && (
+                              <Button size="sm" variant="secondary" onClick={() => setDeleting(event)}>
+                                Eliminar envio
+                              </Button>
+                            )}
+                            {canClose && (
+                              <Button size="sm" onClick={() => setClosing(event)}>
+                                Cerrar
+                              </Button>
+                            )}
+                          </div>
                         ) : undefined
                       }
                     />
@@ -175,6 +209,22 @@ export function OpenReviews({
       {canClose && closing && (
         <CloseReviewModal event={closing} open onClose={() => setClosing(null)} />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+        loading={pending}
+        tone="danger"
+        title="Eliminar envio a planta"
+        confirmLabel="Eliminar"
+        message={
+          <p>
+            Se eliminara el envio abierto del bus <strong>{deleting?.internal_number}</strong> si
+            finalmente no salio a planta.
+          </p>
+        }
+      />
     </>
   );
 }

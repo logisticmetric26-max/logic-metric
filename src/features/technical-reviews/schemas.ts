@@ -84,6 +84,10 @@ export const deleteReviewHistorySchema = z.object({
   event_id: uuidSchema,
 });
 
+export const cancelOpenReviewSchema = z.object({
+  event_id: uuidSchema,
+});
+
 // §30-§32 · Registro de bus NO enviado a planta
 export const notSentSchema = z.object({
   fleet_id: uuidSchema,

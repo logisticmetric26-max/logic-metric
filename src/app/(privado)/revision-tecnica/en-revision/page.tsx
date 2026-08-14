@@ -7,7 +7,7 @@ import { OpenReviews } from "@/features/technical-reviews/open-reviews";
 import { escapeLikePattern, parsePageParam } from "@/lib/utils";
 import { reportError } from "@/lib/errors";
 
-export const metadata: Metadata = { title: "Enviar a planta" };
+export const metadata: Metadata = { title: "Envios a planta" };
 
 const PAGE_SIZE = 25;
 
@@ -77,6 +77,7 @@ export default async function EnRevisionPage({
       terminals={context.terminals.map((terminal) => ({ id: terminal.id, name: terminal.name }))}
       canCreate={context.permissions.includes(PERMISSIONS.technicalReview.create)}
       canClose={context.permissions.includes(PERMISSIONS.technicalReview.close)}
+      canDelete={context.permissions.includes(PERMISSIONS.technicalReview.delete)}
       activeFilterCount={activeFilterCount}
     />
   );

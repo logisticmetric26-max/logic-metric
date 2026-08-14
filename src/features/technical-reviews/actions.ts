@@ -9,6 +9,7 @@ import { actionError, actionSuccess, reportError, type ActionResult } from "@/li
 import { toFieldErrors } from "@/schemas/common";
 import { DOCUMENTS_BUCKET } from "@/lib/documents";
 import {
+  cancelOpenReviewSchema,
   closeReviewSchema,
   deleteReviewHistorySchema,
   documentSchema,
@@ -117,6 +118,47 @@ export async function closeReviewAction(formData: FormData): Promise<ActionResul
   if (error) return actionError(reportError("closeReview", error));
 
   revalidateReviews();
+  return actionSuccess();
+}
+
+export async function cancelOpenReviewAction(eventId: string): Promise<ActionResult> {
+  const context = await requireActiveUser();
+
+  if (!context.permissions.includes(PERMISSIONS.technicalReview.delete)) {
+    return actionError("No tiene permisos para anular envios a planta.");
+  }
+
+  const parsed = cancelOpenReviewSchema.safeParse({ event_id: eventId });
+  if (!parsed.success) return actionError("El envio a planta indicado no es valido.");
+
+  const supabase = await createClient();
+  const { data: event, error: eventError } = await supabase
+    .from("technical_review_events")
+    .select("id, status")
+    .eq("id", parsed.data.event_id)
+    .maybeSingle();
+
+  if (eventError) return actionError(reportError("cancelOpenReview.read", eventError));
+  if (!event) return actionError("El envio a planta no existe o no tiene acceso a su terminal.");
+  if (event.status !== "OPEN") {
+    return actionError("Solo se pueden anular envios a planta que siguen abiertos.");
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("technical_review_events")
+    .delete()
+    .eq("id", event.id)
+    .eq("status", "OPEN")
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) return actionError(reportError("cancelOpenReview.delete", deleteError));
+  if (!deleted) {
+    return actionError("El envio a planta ya no esta disponible o cambio mientras se anulaba.");
+  }
+
+  revalidateReviews();
+  revalidatePath(`/revision-tecnica/detalle/${event.id}`);
   return actionSuccess();
 }
 

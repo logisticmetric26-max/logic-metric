@@ -1,14 +1,12 @@
 import { z } from "zod";
+import { isValidTimeText } from "@/lib/utils";
 import { dateSchema, requiredText, uuidSchema } from "@/schemas/common";
 
 const timeSchema = z
   .string()
   .trim()
   .regex(/^\d{2}:\d{2}$/, "Debe ingresar la hora.")
-  .refine((value) => {
-    const [hours, minutes] = value.split(":").map(Number);
-    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
-  }, "La hora ingresada no es valida.");
+  .refine((value) => isValidTimeText(value), "La hora ingresada no es valida.");
 
 const litersSchema = z
   .string()
@@ -37,6 +35,8 @@ export const badFuelLoadExportSchema = z.object({
   q: z.string().trim().max(120).optional().or(z.literal("")),
   desde: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
   hasta: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
+  hora_desde: z.string().trim().refine((value) => value === "" || isValidTimeText(value)).optional().or(z.literal("")),
+  hora_hasta: z.string().trim().refine((value) => value === "" || isValidTimeText(value)).optional().or(z.literal("")),
   surtidor: uuidSchema.optional().or(z.literal("")),
 });
 
