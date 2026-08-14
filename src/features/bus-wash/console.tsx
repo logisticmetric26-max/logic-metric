@@ -358,62 +358,84 @@ export function BusWashConsole({
         </div>
       </div>
 
-      {/* ══ Estado del día ═══════════════════════════════════════════════════ */}
-      <Card solid>
-        <div className="grid gap-x-6 gap-y-3 px-4 py-3.5 sm:px-5 lg:grid-cols-[1fr_1fr_auto]">
-          <Meter label="Barrido y mopeo" done={stats.bm} expected={stats.expected} percent={bmPercent} />
-          <Meter
-            label="Lavado de carrocería"
-            done={stats.body}
-            expected={stats.expected}
-            percent={bodyPercent}
-            muted={Boolean(rainReason)}
-          />
+      {/* ══ Contadores del día ═══════════════════════════════════════════════
+          Seis indicadores de primera clase, calculados EN VIVO de las filas:
+          cada clic en una pastilla mueve estos números al momento. Son la
+          respuesta a «¿cómo vamos hoy?» sin desplazarse ni sumar de cabeza. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <KpiCard
+          icon={<Bus className="size-5" aria-hidden />}
+          iconTone="bg-slate-100 text-slate-600"
+          label="Flota del día"
+          value={formatNumber(stats.fleet)}
+          hint={`${formatDateOnly(date)} · ${terminalName ?? "todos sus terminales"}`}
+        />
+        <KpiCard
+          icon={<Sparkles className="size-5" aria-hidden />}
+          iconTone="bg-brand-50 text-brand-700"
+          label="Barrido y mopeo"
+          value={bmPercent === null ? "—" : `${bmPercent}%`}
+          hint={`${formatNumber(stats.bm)} de ${formatNumber(stats.expected)} buses`}
+          barPercent={bmPercent}
+          barClass="bg-brand-600"
+        />
+        <KpiCard
+          icon={<Check className="size-5" aria-hidden />}
+          iconTone="bg-info-50 text-info-700"
+          label="Carrocería"
+          value={bodyPercent === null ? "—" : `${bodyPercent}%`}
+          hint={
+            rainReason
+              ? "No se exige hoy · día de lluvia"
+              : `${formatNumber(stats.body)} de ${formatNumber(stats.expected)} buses`
+          }
+          barPercent={bodyPercent}
+          barClass="bg-info-600"
+          muted={Boolean(rainReason)}
+        />
+        <KpiCard
+          icon={<Wrench className="size-5" aria-hidden />}
+          iconTone="bg-warning-50 text-warning-700"
+          label="En reparación"
+          value={formatNumber(stats.inRepair)}
+          hint="Fuera del cálculo del día"
+        />
+        <KpiCard
+          icon={<CloudRain className="size-5" aria-hidden />}
+          iconTone="bg-danger-50 text-danger-700"
+          label="Sin lavado"
+          value={formatNumber(stats.noWash)}
+          hint="Marcados para no lavar"
+        />
+        <KpiCard
+          icon={<FileText className="size-5" aria-hidden />}
+          iconTone={stats.unmarked > 0 ? "bg-warning-50 text-warning-700" : "bg-success-50 text-success-700"}
+          label="Sin marcar"
+          value={formatNumber(stats.unmarked)}
+          hint={stats.unmarked > 0 ? "Pendientes de registro" : "Día completo"}
+          highlight={stats.unmarked > 0}
+        />
+      </div>
 
-          <div className="flex items-center gap-4 text-[12px] text-ink-secondary">
-            <span className="flex items-center gap-1.5" title="Flota del día">
-              <Bus className="size-3.5 text-ink-subtle" aria-hidden />
-              <strong className="font-semibold text-ink tabular-nums">
-                {formatNumber(stats.fleet)}
-              </strong>
-            </span>
-            <span className="flex items-center gap-1.5" title="En reparación">
-              <Wrench className="size-3.5 text-warning-600" aria-hidden />
-              <strong className="font-semibold text-ink tabular-nums">
-                {formatNumber(stats.inRepair)}
-              </strong>
-            </span>
-            <span className="flex items-center gap-1.5 text-danger-700" title="Sin lavado">
-              <strong className="font-semibold tabular-nums">{formatNumber(stats.noWash)}</strong>
-              sin lavado
-            </span>
-            {stats.unmarked > 0 && (
-              <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700">
-                {formatNumber(stats.unmarked)} sin marcar
-              </span>
-            )}
-          </div>
-        </div>
-
-        {(rainReason || existingRecordCount > 0) && (
-          <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-border px-4 py-2 text-[11.5px] text-ink-muted sm:px-5">
+      {(rainReason || existingRecordCount > 0) && (
+        <Card solid>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 px-4 py-2.5 text-[12px] text-ink-muted sm:px-5">
             {rainReason && (
-              <span className="flex items-center gap-1.5 text-info-700">
+              <span className="flex items-center gap-1.5 font-medium text-info-700">
                 <CloudRain className="size-3.5" aria-hidden />
                 Día de lluvia — {rainReason}
               </span>
             )}
             {existingRecordCount > 0 && (
               <span>
-                {formatNumber(existingRecordCount)} marcas guardadas para el{" "}
-                {formatDateOnly(date)}
+                {formatNumber(existingRecordCount)} marcas guardadas para el {formatDateOnly(date)}
                 {existingZones.length > 0 && ` en ${existingZones.join(", ")}`}. Editar actualiza
                 ese mismo día.
               </span>
             )}
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* ══ Flota por zona ═══════════════════════════════════════════════════ */}
       {zones.length === 0 ? (
@@ -452,38 +474,62 @@ export function BusWashConsole({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Medidor vivo: se recalcula con cada clic sobre la flota. */
-function Meter({
+/**
+ * Indicador del día. La cifra manda; el icono da identidad y la barra de
+ * progreso aparece sólo donde hay un porcentaje que mirar.
+ */
+function KpiCard({
+  icon,
+  iconTone,
   label,
-  done,
-  expected,
-  percent,
+  value,
+  hint,
+  barPercent,
+  barClass,
   muted = false,
+  highlight = false,
 }: {
+  icon: React.ReactNode;
+  iconTone: string;
   label: string;
-  done: number;
-  expected: number;
-  percent: number | null;
-  /** Atenuado cuando la faena no se exige (día de lluvia). */
+  value: string;
+  hint: string;
+  barPercent?: number | null;
+  barClass?: string;
   muted?: boolean;
+  highlight?: boolean;
 }) {
   return (
-    <div className={cn(muted && "opacity-60")}>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[12px] font-medium text-ink-secondary">{label}</span>
-        <span className="text-[16px] leading-none font-semibold tracking-[-0.02em] text-ink tabular-nums">
-          {percent === null ? "—" : `${percent}%`}
-          <span className="ml-1.5 text-[11px] font-normal text-ink-subtle">
-            {formatNumber(done)}/{formatNumber(expected)}
-          </span>
+    <div
+      className={cn(
+        "card-material edge relative flex flex-col gap-2 rounded-lg p-4",
+        muted && "opacity-70",
+        highlight && "ring-1 ring-warning-200",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[10.5px] font-semibold tracking-[0.05em] text-ink-muted uppercase">
+          {label}
+        </span>
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-md", iconTone)}>
+          {icon}
         </span>
       </div>
-      <div className="mt-1.5 h-[6px] w-full overflow-hidden rounded-full bg-fill-subtle">
-        <div
-          className="h-full rounded-full bg-brand-600 transition-[width] duration-300 ease-[var(--ease-standard)]"
-          style={{ width: `${percent ?? 0}%` }}
-        />
-      </div>
+
+      <p className="text-[26px] leading-none font-semibold tracking-[-0.03em] text-ink tabular-nums">
+        {value}
+      </p>
+
+      {typeof barPercent !== "undefined" && (
+        <div className="h-[5px] w-full overflow-hidden rounded-full bg-fill-subtle">
+          <div
+            className={cn("h-full rounded-full transition-[width] duration-300", barClass)}
+            style={{ width: `${barPercent ?? 0}%` }}
+          />
+        </div>
+      )}
+
+      <p className="text-[11px] leading-snug text-ink-muted">{hint}</p>
     </div>
   );
 }
@@ -499,26 +545,33 @@ function ZoneSection({
   canEdit: boolean;
   onToggle: (row: BusWashRow, patch: Partial<Flags>) => void;
 }) {
+  const bm = rows.filter((row) => row.bm_completed).length;
+  const body = rows.filter((row) => row.body_wash_completed).length;
+  const repair = rows.filter((row) => row.in_repair).length;
+  const noWash = rows.filter((row) => row.no_wash).length;
   const done = rows.filter(
     (row) => row.bm_completed || row.body_wash_completed || row.in_repair || row.no_wash,
   ).length;
-  const complete = done === rows.length;
+  const pendientes = rows.length - done;
 
   return (
     <Card solid className="overflow-hidden">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-surface-subtle px-4 py-2.5 sm:px-5">
+      {/* Contadores POR ZONA: el jefe de patio trabaja zona a zona y necesita
+          su corte sin sumar filas de cabeza. También en vivo. */}
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border bg-surface-subtle px-4 py-2.5 sm:px-5">
         <h3 className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink">{zone}</h3>
         <span className="text-[11.5px] text-ink-muted tabular-nums">
           {formatNumber(rows.length)} bus{rows.length === 1 ? "" : "es"}
         </span>
 
-        <span
-          className={cn(
-            "ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-medium tabular-nums",
-            complete ? "bg-success-50 text-success-700" : "bg-fill-subtle text-ink-muted",
-          )}
-        >
-          {complete ? "Registro completo" : `${formatNumber(done)}/${formatNumber(rows.length)} registrados`}
+        <span className="ml-auto flex flex-wrap items-center gap-1.5">
+          <ZoneChip tone="success">{formatNumber(bm)} B&M</ZoneChip>
+          <ZoneChip tone="info">{formatNumber(body)} lavado</ZoneChip>
+          {repair > 0 && <ZoneChip tone="warning">{formatNumber(repair)} rep.</ZoneChip>}
+          {noWash > 0 && <ZoneChip tone="danger">{formatNumber(noWash)} sin lavado</ZoneChip>}
+          <ZoneChip tone={pendientes === 0 ? "success" : "neutral"}>
+            {pendientes === 0 ? "Completa" : `${formatNumber(pendientes)} pendientes`}
+          </ZoneChip>
         </span>
       </header>
 
@@ -528,6 +581,33 @@ function ZoneSection({
         ))}
       </ul>
     </Card>
+  );
+}
+
+const ZONE_CHIP_TONES = {
+  success: "bg-success-50 text-success-700",
+  info: "bg-info-50 text-info-700",
+  warning: "bg-warning-50 text-warning-700",
+  danger: "bg-danger-50 text-danger-700",
+  neutral: "bg-fill-subtle text-ink-secondary",
+} as const;
+
+function ZoneChip({
+  tone,
+  children,
+}: {
+  tone: keyof typeof ZONE_CHIP_TONES;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10.5px] font-medium whitespace-nowrap tabular-nums",
+        ZONE_CHIP_TONES[tone],
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
