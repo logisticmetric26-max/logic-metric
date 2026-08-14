@@ -13,6 +13,7 @@ import {
 } from "@/features/bus-wash/schemas";
 
 const BUS_WASH_PATH = "/lavado-buses";
+const BUS_WASH_HISTORY_PATH = "/lavado-buses/historico";
 
 type BusWashActionPayload = {
   bm_completed: boolean;
@@ -25,6 +26,8 @@ type BusWashActionPayload = {
 type BusWashExportActionPayload = {
   file_name: string;
   generated_at: string;
+  csv_content: string;
+  row_count: number;
 };
 
 export async function saveBusWashRecordAction(
@@ -129,7 +132,7 @@ export async function saveBusWashRecordAction(
   return actionSuccess(data);
 }
 
-export async function registerBusWashExportAction(
+export async function exportBusWashDayCsvAction(
   input: BusWashExportInput,
 ): Promise<ActionResult<BusWashExportActionPayload>> {
   const context = await requireActiveUser();
@@ -140,27 +143,20 @@ export async function registerBusWashExportAction(
 
   const parsed = busWashExportSchema.safeParse(input);
   if (!parsed.success) {
-    return actionError("Revise la zona y la fecha solicitadas.");
+    return actionError("Revise la fecha solicitada.");
   }
 
   const supabase = await createClient();
-  const zoneLabel = normalizeZoneLabel(parsed.data.zone);
-  const zoneFilter = zoneLabel === "Sin zona" ? null : zoneLabel;
-
-  let fleetQuery = supabase
+  const { data: fleet, error: fleetError } = await supabase
     .from("fleet_view")
-    .select("id, zone")
+    .select("id, internal_number, ppu, terminal_name, zone")
+    .order("zone", { ascending: true, nullsFirst: false })
     .order("internal_number");
-
-  fleetQuery =
-    zoneFilter === null ? fleetQuery.is("zone", null) : fleetQuery.eq("zone", zoneFilter);
-
-  const { data: fleet, error: fleetError } = await fleetQuery;
   if (fleetError) return actionError(reportError("readBusWashExportFleet", fleetError));
 
   const visibleFleet = (fleet ?? []).filter((item) => normalizeZone(item.zone) !== "REDVAN");
   if (visibleFleet.length === 0) {
-    return actionError("No hay buses visibles en la zona seleccionada para generar el archivo.");
+    return actionError("No hay buses visibles para generar el archivo diario.");
   }
 
   const fleetIds = visibleFleet.map((item) => item.id);
@@ -179,25 +175,67 @@ export async function registerBusWashExportAction(
   }).length;
 
   if (incompleteCount > 0) {
-    return actionError(`El registro del dia de la zona ${zoneLabel} no esta completo.`);
+    return actionError(
+      `El registro del dia no esta completo. Faltan ${incompleteCount} buses por registrar.`,
+    );
   }
 
-  const fileName = `${parsed.data.record_date}_${toFileSegment(zoneLabel)}.csv`;
+  const fileName = `LAVADO_BUSES_${parsed.data.record_date}_TODAS_LAS_ZONAS.csv`;
+  const lines = [
+    [
+      "Numero Interno",
+      "PPU",
+      "Fecha",
+      "Zona",
+      "Terminal",
+      "B y M",
+      "L. Carroceria",
+      "En Reparacion",
+      "Sin lavado",
+    ]
+      .map(escapeCsv)
+      .join(","),
+    ...visibleFleet.map((item) => {
+      const record = recordMap.get(item.id)!;
+
+      return [
+        item.internal_number,
+        item.ppu,
+        parsed.data.record_date,
+        normalizeZoneLabel(item.zone),
+        item.terminal_name,
+        record.bm_completed ? "1" : "0",
+        record.body_wash_completed ? "1" : "0",
+        record.in_repair ? "1" : "0",
+        record.no_wash ? "1" : "0",
+      ]
+        .map(escapeCsv)
+        .join(",");
+    }),
+  ];
+
   const { data, error } = await supabase
     .from("bus_wash_exports")
     .insert({
       record_date: parsed.data.record_date,
-      zone: zoneLabel,
+      zone: "Todas las zonas",
       file_name: fileName,
       bus_count: visibleFleet.length,
       generated_by: context.profile.id,
     })
-    .select("file_name, generated_at")
+    .select("file_name, generated_at, bus_count")
     .single();
 
   if (error) return actionError(reportError("createBusWashExport", error));
 
-  return actionSuccess(data);
+  revalidatePath(BUS_WASH_HISTORY_PATH);
+
+  return actionSuccess({
+    file_name: data.file_name,
+    generated_at: data.generated_at,
+    csv_content: lines.join("\r\n"),
+    row_count: data.bus_count,
+  });
 }
 
 function normalizeBusWashPayload(input: BusWashRecordInput): BusWashRecordInput {
@@ -226,8 +264,8 @@ function normalizeZone(value: string | null | undefined) {
   return value?.trim().toUpperCase() ?? "";
 }
 
-function normalizeZoneLabel(value: string) {
-  return value.trim() || "Sin zona";
+function normalizeZoneLabel(value: string | null | undefined) {
+  return value?.trim() || "Sin zona";
 }
 
 function hasAnyBusWashStatus(
@@ -246,12 +284,6 @@ function hasAnyBusWashStatus(
   );
 }
 
-function toFileSegment(value: string) {
-  const sanitized = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return sanitized || "SIN_ZONA";
+function escapeCsv(value: string) {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

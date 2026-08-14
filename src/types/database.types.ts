@@ -450,6 +450,17 @@ export type BadFuelLoadViewRow = {
   updated_at: string;
 }
 
+export type BusWashExportViewRow = {
+  id: string;
+  record_date: string;
+  zone: string;
+  file_name: string;
+  bus_count: number;
+  generated_by: string | null;
+  generated_by_name: string | null;
+  generated_at: string;
+}
+
 export type TerminalSummary = {
   id: string;
   name: string;
@@ -785,6 +796,7 @@ export type Database = {
       technical_review_not_sent_view: ReadOnlyView<TechnicalReviewNotSentViewRow>;
       fuel_delivery_schedule_view: ReadOnlyView<FuelDeliveryScheduleViewRow>;
       bad_fuel_loads_view: ReadOnlyView<BadFuelLoadViewRow>;
+      bus_wash_exports_view: ReadOnlyView<BusWashExportViewRow>;
       profiles_view: ReadOnlyView<ProfileViewRow>;
       roles_view: ReadOnlyView<RoleViewRow>;
     };

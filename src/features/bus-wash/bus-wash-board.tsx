@@ -5,12 +5,12 @@ import { Bus, Check, Download, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge, ActiveBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/feedback";
+import { Alert, EmptyState } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { formatDateOnly, formatDateTime, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { registerBusWashExportAction, saveBusWashRecordAction } from "@/features/bus-wash/actions";
+import { exportBusWashDayCsvAction, saveBusWashRecordAction } from "@/features/bus-wash/actions";
 
 export interface BusWashListRow {
   id: string;
@@ -36,10 +36,12 @@ type BusWashFlags = Pick<
 export function BusWashBoard({
   initialRows,
   date,
+  existingRecordCount,
   canEdit,
 }: {
   initialRows: BusWashListRow[];
   date: string;
+  existingRecordCount: number;
   canEdit: boolean;
 }) {
   const toast = useToast();
@@ -47,6 +49,7 @@ export function BusWashBoard({
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [exporting, startExportTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
 
   const filteredRows = useMemo(() => {
@@ -61,7 +64,6 @@ export function BusWashBoard({
   }, [deferredQuery, rows]);
 
   const groupedRows = useMemo(() => [...groupRowsByZone(filteredRows).entries()], [filteredRows]);
-  const allRowsByZone = useMemo(() => groupRowsByZone(rows), [rows]);
 
   const summary = useMemo(
     () => ({
@@ -125,19 +127,19 @@ export function BusWashBoard({
     );
   }
 
-  function handleZoneExport(zone: string) {
-    const zoneRows = allRowsByZone.get(zone) ?? [];
-    const incompleteRows = zoneRows.filter((row) => !hasAnyStatus(row));
+  function handleDayExport() {
+    const incompleteRows = rows.filter((row) => !hasAnyStatus(row));
 
     if (incompleteRows.length > 0) {
-      window.alert(`El registro del dia de la zona ${zone} no esta completo.`);
+      window.alert(
+        `El registro del dia no esta completo. Faltan ${formatNumber(incompleteRows.length)} buses por registrar.`,
+      );
       return;
     }
 
-    startTransition(async () => {
-      const result = await registerBusWashExportAction({
+    startExportTransition(async () => {
+      const result = await exportBusWashDayCsvAction({
         record_date: date,
-        zone,
       });
 
       if (!result.ok) {
@@ -145,8 +147,10 @@ export function BusWashBoard({
         return;
       }
 
-      downloadZoneCsv(zoneRows, zone, result.data.file_name);
-      toast.success(`Archivo ${result.data.file_name} generado.`);
+      downloadCsv(result.data.file_name, result.data.csv_content);
+      toast.success(
+        `Archivo ${result.data.file_name} generado con ${formatNumber(result.data.row_count)} buses.`,
+      );
     });
   }
 
@@ -168,11 +172,36 @@ export function BusWashBoard({
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <MetricPill label="Fecha" value={formatDateOnly(date)} hint="Dia operativo" tone="neutral" />
-              <MetricPill label="Flota visible" value={formatNumber(summary.total)} hint="Buses en pantalla" tone="brand" />
-              <MetricPill label="B&M" value={formatNumber(summary.bm)} hint="Marcados como realizados" tone="success" />
-              <MetricPill label="Lavado" value={formatNumber(summary.bodyWash)} hint="Carroceria realizada" tone="info" />
-              <MetricPill label="Rep. / sin" value={`${formatNumber(summary.inRepair)} / ${formatNumber(summary.noWash)}`} hint="Reparacion / sin lavado" tone="warning" />
+              <MetricPill
+                label="Fecha"
+                value={formatDateOnly(date)}
+                hint="Dia operativo"
+                tone="neutral"
+              />
+              <MetricPill
+                label="Flota visible"
+                value={formatNumber(summary.total)}
+                hint="Buses en pantalla"
+                tone="brand"
+              />
+              <MetricPill
+                label="B&M"
+                value={formatNumber(summary.bm)}
+                hint="Marcados como realizados"
+                tone="success"
+              />
+              <MetricPill
+                label="Lavado"
+                value={formatNumber(summary.bodyWash)}
+                hint="Carroceria realizada"
+                tone="info"
+              />
+              <MetricPill
+                label="Rep. / sin"
+                value={`${formatNumber(summary.inRepair)} / ${formatNumber(summary.noWash)}`}
+                hint="Reparacion / sin lavado"
+                tone="warning"
+              />
             </div>
           </div>
 
@@ -189,14 +218,22 @@ export function BusWashBoard({
                 </Field>
                 <div className="flex items-end">
                   <Button type="submit" fullWidth>
-                    Cargar dia
+                    Abrir dia
                   </Button>
                 </div>
               </form>
             </Card>
 
             <Card solid className="border-slate-200/80 bg-white/85">
-              <div className="p-4">
+              <div className="space-y-3 p-4">
+                <Button
+                  onClick={handleDayExport}
+                  loading={exporting}
+                  fullWidth
+                  icon={<Download className="size-4" aria-hidden />}
+                >
+                  Cargar dia
+                </Button>
                 <Field
                   label="Buscar bus"
                   hint="Filtre por numero interno, PPU, terminal o zona."
@@ -216,6 +253,14 @@ export function BusWashBoard({
         </div>
       </Card>
 
+      {existingRecordCount > 0 && (
+        <Alert tone="warning" title="El dia cargado ya mantiene registros de lavado.">
+          Se encontraron {formatNumber(existingRecordCount)} marcas guardadas para el{" "}
+          <strong>{formatDateOnly(date)}</strong>. Si continua editando, actualizara ese mismo dia
+          operativo.
+        </Alert>
+      )}
+
       {groupedRows.length === 0 ? (
         <Card solid>
           <EmptyState
@@ -230,12 +275,11 @@ export function BusWashBoard({
         </Card>
       ) : (
         groupedRows.map(([zone, zoneRows]) => {
-          const allZoneRows = allRowsByZone.get(zone) ?? zoneRows;
-          const incompleteCount = allZoneRows.filter((row) => !hasAnyStatus(row)).length;
-          const bmCount = allZoneRows.filter((row) => row.bm_completed).length;
-          const bodyWashCount = allZoneRows.filter((row) => row.body_wash_completed).length;
-          const repairCount = allZoneRows.filter((row) => row.in_repair).length;
-          const noWashCount = allZoneRows.filter((row) => row.no_wash).length;
+          const incompleteCount = zoneRows.filter((row) => !hasAnyStatus(row)).length;
+          const bmCount = zoneRows.filter((row) => row.bm_completed).length;
+          const bodyWashCount = zoneRows.filter((row) => row.body_wash_completed).length;
+          const repairCount = zoneRows.filter((row) => row.in_repair).length;
+          const noWashCount = zoneRows.filter((row) => row.no_wash).length;
 
           return (
             <Card key={zone} solid className="overflow-hidden">
@@ -257,15 +301,6 @@ export function BusWashBoard({
                   <Badge tone="info">{formatNumber(bodyWashCount)} lavado</Badge>
                   <Badge tone="neutral">{formatNumber(repairCount)} en reparacion</Badge>
                   <Badge tone="danger">{formatNumber(noWashCount)} sin lavado</Badge>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<Download className="size-4" aria-hidden />}
-                    disabled={pending}
-                    onClick={() => handleZoneExport(zone)}
-                  >
-                    Cargar dia
-                  </Button>
                 </div>
               </div>
 
@@ -378,7 +413,9 @@ export function BusWashBoard({
                       </div>
 
                       {isSaving && (
-                        <p className="xl:col-span-2 text-[11px] font-medium text-ink-muted">Guardando...</p>
+                        <p className="xl:col-span-2 text-[11px] font-medium text-ink-muted">
+                          Guardando...
+                        </p>
                       )}
                     </div>
                   );
@@ -522,39 +559,8 @@ function normalizeZoneLabel(zone: string | null | undefined) {
   return zone?.trim() || "Sin zona";
 }
 
-function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, fileName: string) {
-  const date = fileName.slice(0, 10);
-  const lines = [
-    "Registro de lavado de buses",
-    [
-      "N\u00famero Interno",
-      "PPU",
-      "Fecha",
-      "Zona",
-      "terminal",
-      "B y M",
-      "L. Carrocer\u00eda",
-      "en Reparacion",
-    ]
-      .map(escapeCsv)
-      .join(","),
-    ...zoneRows.map((row) =>
-      [
-        row.internal_number,
-        row.ppu,
-        formatDateOnly(date),
-        zone,
-        zone,
-        row.bm_completed ? "1" : "0",
-        row.body_wash_completed ? "1" : "0",
-        row.in_repair ? "1" : "0",
-      ]
-        .map(escapeCsv)
-        .join(","),
-    ),
-  ];
-
-  const blob = new Blob([`\uFEFF${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8;" });
+function downloadCsv(fileName: string, csvContent: string) {
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -564,8 +570,4 @@ function downloadZoneCsv(zoneRows: BusWashListRow[], zone: string, fileName: str
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-}
-
-function escapeCsv(value: string) {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

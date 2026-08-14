@@ -27,12 +27,14 @@ export default async function LavadoBusesPage({
 
   const supabase = await createClient();
   let rows: BusWashListRow[];
+  let existingRecordCount = 0;
 
   try {
     const [
       { data: fleet, error: fleetError },
       { data: records, error: recordsError },
       { data: previousDayRecords, error: previousDayRecordsError },
+      { count: recordCount, error: recordCountError },
     ] =
       await Promise.all([
         supabase
@@ -49,11 +51,18 @@ export default async function LavadoBusesPage({
           .select("fleet_id, body_wash_completed")
           .eq("record_date", previousDate)
           .eq("body_wash_completed", true),
+        supabase
+          .from("bus_wash_records")
+          .select("id", { count: "exact", head: true })
+          .eq("record_date", date),
       ]);
 
     if (fleetError) throw fleetError;
     if (recordsError) throw recordsError;
     if (previousDayRecordsError) throw previousDayRecordsError;
+    if (recordCountError) throw recordCountError;
+
+    existingRecordCount = recordCount ?? 0;
 
     const recordMap = new Map((records ?? []).map((record) => [record.fleet_id, record]));
     const previousDayBodyWashSet = new Set(
@@ -90,6 +99,7 @@ export default async function LavadoBusesPage({
     <BusWashBoard
       initialRows={rows}
       date={date}
+      existingRecordCount={existingRecordCount}
       canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
     />
   );
