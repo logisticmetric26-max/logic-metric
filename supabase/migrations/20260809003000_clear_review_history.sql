@@ -1,3 +1,4 @@
+-- SECCION: REVISION TECNICA
 -- =============================================================================
 -- 1400 · Vaciar el historial de revisión técnica preservando los vencimientos
 -- =============================================================================
