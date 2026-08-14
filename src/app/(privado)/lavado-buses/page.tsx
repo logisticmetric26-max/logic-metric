@@ -28,6 +28,7 @@ export default async function LavadoBusesPage({
   const supabase = await createClient();
   let rows: BusWashListRow[];
   let existingRecordCount = 0;
+  let existingZones: string[] = [];
 
   try {
     const [
@@ -90,6 +91,8 @@ export default async function LavadoBusesPage({
           updated_at: record?.updated_at ?? null,
         };
       });
+
+    existingZones = [...new Set(rows.filter(hasAnyStatus).map((row) => normalizeZoneLabel(row.zone)))].sort();
   } catch (error) {
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
@@ -100,6 +103,7 @@ export default async function LavadoBusesPage({
       initialRows={rows}
       date={date}
       existingRecordCount={existingRecordCount}
+      existingZones={existingZones}
       canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
     />
   );
@@ -119,4 +123,12 @@ function subtractDaysFromDateOnly(value: string, days: number) {
 
 function normalizeZone(value: string | null | undefined) {
   return value?.trim().toUpperCase() ?? "";
+}
+
+function normalizeZoneLabel(zone: string | null | undefined) {
+  return zone?.trim() || "Sin zona";
+}
+
+function hasAnyStatus(row: Pick<BusWashListRow, "bm_completed" | "body_wash_completed" | "in_repair" | "no_wash">) {
+  return row.bm_completed || row.body_wash_completed || row.in_repair || row.no_wash;
 }

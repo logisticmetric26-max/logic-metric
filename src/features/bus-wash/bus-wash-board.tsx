@@ -37,11 +37,13 @@ export function BusWashBoard({
   initialRows,
   date,
   existingRecordCount,
+  existingZones,
   canEdit,
 }: {
   initialRows: BusWashListRow[];
   date: string;
   existingRecordCount: number;
+  existingZones: string[];
   canEdit: boolean;
 }) {
   const toast = useToast();
@@ -256,8 +258,11 @@ export function BusWashBoard({
       {existingRecordCount > 0 && (
         <Alert tone="warning" title="El dia cargado ya mantiene registros de lavado.">
           Se encontraron {formatNumber(existingRecordCount)} marcas guardadas para el{" "}
-          <strong>{formatDateOnly(date)}</strong>. Si continua editando, actualizara ese mismo dia
-          operativo.
+          <strong>{formatDateOnly(date)}</strong>.
+          {existingZones.length > 0
+            ? ` Ya existen registros en: ${existingZones.join(", ")}.`
+            : ""}
+          {" "}Si continua editando, actualizara ese mismo dia operativo.
         </Alert>
       )}
 
