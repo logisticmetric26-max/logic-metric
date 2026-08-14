@@ -3,11 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { ErrorState } from "@/components/ui/feedback";
-import { BusWashBoard, type BusWashListRow } from "@/features/bus-wash/bus-wash-board";
+import { BusWashConsole, type BusWashRow } from "@/features/bus-wash/console";
 import { reportError } from "@/lib/errors";
 import { todayInZone } from "@/lib/format";
-import { computeCompliance, totalCompliance } from "@/features/bus-wash/compliance";
-import { BusWashDailyActions } from "@/features/bus-wash/daily-actions";
 import { fetchWeekWeather } from "@/features/bus-wash/weather";
 import { BusWashWeatherCard } from "@/features/bus-wash/weather-card";
 
@@ -16,7 +14,6 @@ export const metadata: Metadata = { title: "Lavado Buses" };
 interface SearchParams {
   fecha?: string;
   terminal?: string;
-  buscar?: string;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -46,20 +43,14 @@ export default async function LavadoBusesPage({
       : null;
   const terminalId = requestedTerminal ?? (terminalOptions.length === 1 ? terminalOptions[0].id : null);
 
-  // Búsqueda por PPU o número interno. Se resuelve en el servidor y no sólo en
-  // el navegador para que el filtro valga también sobre los buses que aún no
-  // se han traído a la página.
-  const search = (params.buscar ?? "").trim().toUpperCase();
-
   const supabase = await createClient();
 
   // El pronóstico va aparte del try de los datos: si el servicio no responde,
   // la tarjeta desaparece pero el registro del día sigue funcionando.
   const weather = await fetchWeekWeather();
-  let rows: BusWashListRow[];
+  let rows: BusWashRow[];
   let existingRecordCount = 0;
   let existingZones: string[] = [];
-  let progress = { bmDone: 0, bodyDone: 0, expected: 0 };
   let rainReason: string | null = null;
 
   try {
@@ -121,12 +112,6 @@ export default async function LavadoBusesPage({
     );
     rows = (fleet ?? [])
       .filter((bus) => normalizeZone(bus.zone) !== "REDVAN")
-      .filter(
-        (bus) =>
-          search === "" ||
-          bus.ppu.toUpperCase().includes(search) ||
-          bus.internal_number.toUpperCase().includes(search),
-      )
       .map((bus) => {
         const record = recordMap.get(bus.id);
         const blockedByStatus = record?.in_repair || record?.no_wash;
@@ -159,18 +144,6 @@ export default async function LavadoBusesPage({
       ? ((rainDays ?? []).find((day) => day.terminal_id === terminalId)?.reason ?? null)
       : null;
 
-    // Avance del día. Los buses en reparación y los «no se lava» salen de la
-    // cuenta: no estaban disponibles, y exigirlos castigaría al turno por algo
-    // que no dependía de él.
-    // Se consolidan TODOS los terminales mostrados. Tomar sólo el primero hacía
-    // que con «todos mis terminales» la cifra dijera «0 de 139» teniendo 931
-    // buses en pantalla.
-    const consolidado = totalCompliance(computeCompliance(rows));
-    progress = {
-      bmDone: consolidado.bm.done,
-      bodyDone: consolidado.bodyWash.done,
-      expected: consolidado.bm.expected,
-    };
   } catch (error) {
     reportError("busWashPage", error);
     return <ErrorState description="No fue posible cargar el control diario de lavado de buses." />;
@@ -182,27 +155,21 @@ export default async function LavadoBusesPage({
         <BusWashWeatherCard days={weather} today={todayInZone()} />
       )}
 
-      <BusWashDailyActions
+      <BusWashConsole
+        /* La consola copia las filas a su estado para el marcado optimista y
+           sólo las toma al montarse. La `key` la remonta cuando cambian la
+           fecha o el terminal; sin ella, la tabla seguiría mostrando la flota
+           anterior hasta recargar a mano. */
+        key={`${date}-${terminalId ?? "todos"}`}
+        initialRows={rows}
         date={date}
+        terminals={terminalOptions}
         terminalId={terminalId}
         terminalName={terminalOptions.find((terminal) => terminal.id === terminalId)?.name ?? null}
         canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
         rainReason={rainReason}
-        progress={progress}
-        terminals={terminalOptions}
-        search={params.buscar ?? ""}
-      />
-      <BusWashBoard
-        /* El tablero copia las filas a su estado interno y sólo las toma al
-           montarse. Sin esta `key`, cambiar de terminal actualizaba la URL y
-           los datos del servidor, pero la tabla seguía mostrando la flota
-           anterior hasta recargar la página a mano. */
-        key={`${date}-${terminalId ?? "todos"}-${search}`}
-        initialRows={rows}
-        date={date}
         existingRecordCount={existingRecordCount}
         existingZones={existingZones}
-        canEdit={context.permissions.includes(PERMISSIONS.busWash.edit)}
       />
     </>
   );
@@ -228,7 +195,7 @@ function normalizeZoneLabel(zone: string | null | undefined) {
   return zone?.trim() || "Sin zona";
 }
 
-function hasAnyStatus(row: Pick<BusWashListRow, "bm_completed" | "body_wash_completed" | "in_repair" | "no_wash">) {
+function hasAnyStatus(row: Pick<BusWashRow, "bm_completed" | "body_wash_completed" | "in_repair" | "no_wash">) {
   return row.bm_completed || row.body_wash_completed || row.in_repair || row.no_wash;
 }
 
